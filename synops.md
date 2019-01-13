@@ -83,4 +83,67 @@ $ ./program A & ; ./program B & ; ./program C & ; ./program D &
 # The Crux: HOW TO STORE DATA PERSISTENTLY.
 
 **code in CodeSnippets**:
-+ `open()`, `close()` and `write()` - is **system calls** (are routed to the part of the OS called **file system** which then handles the requests and returns some kind of error code to the user)
++ `open()`, `close()` and `write()` - is **system calls** (this s.calls are routed to the part of the OS called **file system** which then handles the requests and returns some kind of error code to the user - this is how system calls works: programm call it, pass control to OS, OS handles the request, return the output and control to program).
+
+# 2.6 Some History
+
+### Early Operating Systems: Just Libraries
+
+> Basically, it was just a set of libraries of commonly-used functions; for example, instead of having each programmer of the system write low-level I/O handling code, the “OS” would provide such APIs, and thus make life easier for the developer.
+
+### Protection: System Calls
+
++ code which run on behalf of the OS was special; it had control of devices and thus should be treated dif- ferently than normal application code
+
++ imagine if any code could have such permisions. The notion of privacy goes out the window, as any program could read any file.
++ Thus implementing the **file system**, but as a library it make a little sense.
+
++ To improve this **system calls** were invented and firstly come with *Atlas computing system*:
+	+ Instead of providing OS routines as a library (where you just make **procedure calls** to access them), the idea here was to add a special pair of hardware instructions and hardware state to make the transition into the OS a more formal, controlled process.
+
+##### System call vs. Procedure call:
+System call transfers control (i.e. jumps) into the OS while simultaneously raising the **hardware privilege level**. User applications run in **user mode** which means the hardware restricts what ap- plications can do.
+
+> for example, an application running in user mode can’t typically initiate an I/O request to the disk, access any physical memory page, or send a packet on the network
+
+1. System call from user application
+2. Hardware transfers control to pre-specified **trap handler** (OS set it up previously)
+3. Privilege level set to **kernel mode**
+4. OS done servicing this request
+5. OS passes control back to the application (via special **return-from-trap** instruction which reverts to **user mode** and passing control back to where the application left off)
+
+# PART I
+# VIRTUALIZATION
+
+## The Abstraction: The Process
+process is a **running program**
+
+# The Crux: HOW TO PROVIDE THE ILLUSION OF MANY CPUS?
+
+The OS can run hundred of processes with less then 10 CPUs (cores). This is achivied by **CPU virtualization**: running one process, then stopping it and running another, and so forth, the OS can promote the illusion that many virtual CPUs exist when in fact there is only one physical CPU (or a few).
+This basic technique is know as **time sharing** of the CPU, allows users to run as many concurrent processes as they would like; the potential cost is performance, as each will run more slowly if the CPU(s) must be shared.
+
+To implement it (v. of CPU) the OS will need bot some low-level machinery as well as some hight-level intelligence:
+1. **Machinery** - low-level mechanisms; **Mechanisms** - are low-level methods or protocols that implement a needed piece of functionality.
+2. **Polices** - algorithms for making some kind of decision within the OS.
+
+##### Note: the policy that dedicate what process will run first is called **scheduling policy**.
+
+# 4.1 The Abstraction: A Process
+
+The abstraction provided by the OS of a running program is something we will call a **process**.
+
+**Machine state** of a process is what program can read or update when it is running. What parts of a machine are important for program execution.
+
+**Memory** is obvious part of a machine state. Instructions lie in memory; some instructions works with memory (address space). 
+Thus the memory that the process can address (called its address space) is part of the process.
+
+Also registers (Program counter - tells us which instruction of the process is currently being executed), similarly **stack pointer** and associated **frame pointer** (are used to manage the stack for function parameters, local variables, and return addresses).
+
+# TIP: Policy and Mechanism
+Mechanism is about *how*: how does an operating system perform a context switch?
+
+Policy is about *which*: which process should the operating system run right now? 
+
+
+
