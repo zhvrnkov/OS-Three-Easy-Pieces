@@ -1,5 +1,5 @@
 # Intro to OS.
-##### Von Neuman model of computing: 
+##### Von Neuman model of computing:
 CPU fetches instruction (from memory), decodes it, and executes.
 
 ##### Operations System:
@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 	Spin(1);
         printf("%s\n", str);
     }
-    return 0; 
+    return 0;
 }
 ```
 + `Spin(1)` - repeadetly chekcs the time and return once in has run for a second.
@@ -135,7 +135,7 @@ The abstraction provided by the OS of a running program is something we will cal
 
 **Machine state** of a process is what program can read or update when it is running. What parts of a machine are important for program execution.
 
-**Memory** is obvious part of a machine state. Instructions lie in memory; some instructions works with memory (address space). 
+**Memory** is obvious part of a machine state. Instructions lie in memory; some instructions works with memory (address space).
 Thus the memory that the process can address (called its address space) is part of the process.
 
 Also registers (Program counter - tells us which instruction of the process is currently being executed), similarly **stack pointer** and associated **frame pointer** (are used to manage the stack for function parameters, local variables, and return addresses).
@@ -143,7 +143,46 @@ Also registers (Program counter - tells us which instruction of the process is c
 # TIP: Policy and Mechanism
 Mechanism is about *how*: how does an operating system perform a context switch?
 
-Policy is about *which*: which process should the operating system run right now? 
+Policy is about *which*: which process should the operating system run right now?
+
+##### Stack Pointer and Frame Pointer
+Frame pointer - the value of Stack Pointer before function call. A frame pointer of a given invocation of a function is a copy of the stack pointer as it was before the function was invoked.
+
+# 4.2 Process API
++ Create: some method to create a new process. Typing command to shell, double-click app icon is invoke OS to create a new process for that program.
++ Destroy: destroy process forcefully.
++ Wait: stop running a process.
++ Miscellaneous Control: other that killing or waiting for a process. Some systems allows to suspend process and the resume it and so forth.
++ Status: some status information about a process.
+
+# 4.3 Process Creation: A Little More Detail
+
+##### Q: how does the OS get a program up and running? How does process creation actually work?
+##### A:
+1. to run program, OS need to load its code and any static data (e.g. initialized variables) into memory (address space of a process).
+
+> Programs initially reside on disk in some kind of executable format; thus, the process of loading a program and static data into memory re- quires the OS to read those bytes from disk and place them in memory somewhere
+
+> In early (or simple) operating systems, the loading process is done ea- gerly, i.e., all at once before running the program; modern OSes perform the process lazily, i.e., by loading pieces of code or data only as they are needed during program execution
+
+2. allocate memory for **run-time** stack
+
+> As you should likely already know, C programs use the stack for local variables, function parameters, and return addresses
+
+> The OS will also likely initial- ize the stack with arguments; specifically, it will fill in the parameters to the main() function, i.e., argc and the argv array
+
+3. allocate some memory for **heap**.
+
+> Heap will be small at first; as the program runs, and requests more memory with `malloc()` library API, the OS may get involved and allocate more memory to the process to help satisfy such calls.
+
+4. some other initialization tasks regarding I/O.
+
+> For example, in UNIX systems, each process by default has three open file descriptors, for standard input, output, and error; these descriptors let programs easily read input from the terminal as well as print output to the screen
+
+5. finally, set the stage of program execution
+
+> In C this is jumping to `main` routine and and transfers control to the **CPU**
 
 
-
+### Homework:
+-I RUN_IO_IMMEDIATE with -S SWITCH_ON_IO is some sort of asynchronous IO when we call IO, while waiting execute other instructions, when IO complete immediate processed it (run another io) and so forth. Thus i think that running IO immediate is really good idea in most cases. For better performance i'll also recommend to run IO immediate but without interrupting other processes. When we interrupt process, we need to stash its instruction in RAM, clear registers, load IO instruction - this is loses in performance too.  The better way is allow last process to complete its instructions and then processed IO calls (in that case we reduce IO performance by idle it while waiting - not perfect too).
