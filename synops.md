@@ -1236,3 +1236,102 @@ OS must provide **exception handler**
 ## Summary
 + internal fragmentation
 + segmentation
+
+# Segmentation
+You might noticed the big chunk of "free" space right in the middle, between the stack and the heap
+
+Base and bounds mechanism isn't too flexible as we would like because of two things:
+1. big chunk of "free" memory in the middle is wasteful
+2. because of this it is quite hard to run a program when the entire address space doesn't fit into memory. We got single and **solid** address space which is unwieldy in some sort of things.
+
+##### THE CRUX: HOW TO SUPPORT A LARGE ADDRESS SPACE
+
+## 16.1 Segmentation: Generalized Base/Bounds
+To solve this problem the idea was born - **segmentation** (very early 1960's)
+
+The idea is simple: instead of having one pair of base/bound register per address space, why not have pair of registers for each logic **segment** of the address space (code, stack, heap).
+
+Segmentations is **allows OS** to place each one of those segments in different places in physical memory (with this mechanism we will not have solid address space from "physical memory point of view" which will add more flexibility).
+
+> With a base and bounds pair per segment, we can place each segment **independently** in physical memory
+
+##### ASIDE: The Segmentation Fault
+or violation arises from a memory access on a segmented machine to an **illegal address**. Humorously, the term persists, *even on machines with no support for segmentation at all*.
+
+##### Note: also some notes in notebook.
+
+## 16.2 Which segment are we referring to?
+Hardware uses segment registers during translation.
+
+##### Q: How does it know the offset into a segment, and to which segment an address refers?
+
+VA: 0b01000001101000
+- top two bits are the number of segments (01)
+- other bits is offset
+
+For example 00 - code segment, 01 - heap, 10 - stack
+
+0b01000001101000 (4200) virtual address
+1. 01 - heap
+2. 12 last bits `0b000001101000`, or `0x068` or `104` is offset
+
++ Hardware takes two top bits to determine the segment
++ Get other bits to calculate the offset
++ Check that offset is less then limit register
++ Add offset to base register and get p.address
+
+```c
+// get top 2 bits of 14-bit VA
+Segment = (VirtualAddress & SEG_MASK) >> SEG_SHIFT
+// now get offset
+Offset  = VirtualAddress & OFFSET_MASK
+if (Offset >= Bounds[Segment])
+    RaiseException(PROTECTION_FAULT)
+else
+    PhysAddr = Base[Segment] + Offset
+    Register = AccessMemory(PhysAddr)
+
+// SEG MASK = 0x3000
+// SEG_SHIFT = 12
+// OFFSET_MASK = 0xFFF
+```
+> In some system only one bit of VA is used as segment number - they just concat HEAP and CODE segments into one
+
+This techniques is **implicit approach** (if that tells you something).
+
+## 16.3 What about the Stack?
+Stack *grows backward*. In physical memory it starts at `28KB` and grows back to `26KB` (VA: `16KB` -> `14KB`) and translation must be proceed differently.
+
+Need little hardware support for this: Instead of just base and bounds values, the hardware also needs to know which way the segment grows - 1 bit of information (0 - negative direction, 1 - positive).
+
+In case of stack we need to subtract offset, but from what, from base value? I think no and this is reasonable, because stack grows in opposite direction, then start of the stack is also in opposite direction = base + limit. ***Also add note in notebook aboit it***.
+
+## 16.4 Support for sharing.
+> ... to save memory sometimes it is useful to **share** certain memory segments between address spaces. In particular, **code sharing** is common and still in use in systems today.
+
+To support this we need little support from the hardware - new **protections bits**. Add a few bits per segment indicating whether or not program can read or write a segment, or perhaps execute code that lies within the segment.
+
+##### TODO: Dont understand that well. Find additional info about it.
+
+## 16.5 Fine-grained vs Coarse-grained Segmentation
+
+Coarse-gained segments are our case: heap, code and stack are relatively bit segments regarding *fine-grained*.
+
+Fine-grained segments were in use in early systems, where OS supports thousands of segments per process. For each segment there is a row in *segment table* which were stored in memory.
+
+## 16.6 OS Support
+1. What should OS do on a context switch?
+the segment registers must be saved and restored
+
+2. Managing free space in physical memory.
+notice that segments might be a different size
+
+#### External fragmentation
+> physical memory quickly becomes full of little holes of free space, making it difficult to allocate new segments, or to grow existing ones
+
+One solution of this problem is **compact** physical memory be rearranging the existing segments. OS could:
++ stop whichever process are running,
++ copy their data to one contiguous region of memory,
++ change their segment register values regarding new physical memory
+
+Simpler approach is to use **free-list** management algorithm that tries to keep **compact** arrangement from the beginning. There are literally hundreds of such approaches which means that **there is no single solution** and external fragmentation is **still exists**.
