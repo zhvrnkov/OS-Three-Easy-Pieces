@@ -1335,3 +1335,57 @@ One solution of this problem is **compact** physical memory be rearranging the e
 + change their segment register values regarding new physical memory
 
 Simpler approach is to use **free-list** management algorithm that tries to keep **compact** arrangement from the beginning. There are literally hundreds of such approaches which means that **there is no single solution** and external fragmentation is **still exists**.
+
+# Free-Space Management
+Cases: memory-allocation library (`malloc`, `free`); OS itself (managing physical memory). In both cases the problem that exists is called **external fragmentation**: the free space gets chopped into little pieces of different sized and is thus fragmented.
+
+For example, consider 30 bits of free space. 10 free, 10 used, 10 free. Consider now a request for 15 bits in such space. Such request will **fail** even though there are 20 free bits.
+
+##### CRUX: HOW TO MANAGE FREE SPACE
+
+## 17.1 Assumptions
+`void* malloc(size_t size)` - takes a single parameter which is *size* of desired memory space
+
+`void free(void* ptr)` - takes a single parameter which is *pointer* and frees the corresponding chunk
+
+**NOTICE**: that `free` doesn't take size of memory, which is need to be freed. That part of information should be fetched by memory-allocation library - is must figured out how big a chunk of memory is.
+
+The space, that have been managed by this calls is known historically as the `heap`. Also there is generic data structure - the `free list`, which functionality is manage free space in the heap. This `free list` contains references to all of the free chunks of space in the managed region of memory.
+
+We talked about **external fragmentation**, but allocators could of course face the problem of **internal fragmentation** (the waste occurs inside the allocated unit) - allocator hand out chunks of memory bigger that that requested.
+
+Also we assume that once memory is handed out to a client, it cannot be relocated to another location in memory (at current moment memory do without dynamic relocations and any compactions).
+> For example, if a program calls `malloc()` and is given a pointer to some space within the heap, that memory region is essentially “owned” by the program (and cannot be moved by the library) until the program returns it via a correspond- ing call to `free()`
+
+##### Q: `sbrk` and `brk` functions.
+
+## 17.2 Low-level Mechanisms
+Basic techniques in most any allocator: *splitting* and *coalescing*.
+
+### Splitting and Coalescing
+10 free, 10 used, 10 free. The `free-list` of such `heap` is:
+`head -> #1(addr: 0, len: 10) -> #2(addr: 20, len: 10) -> NULL`
+`#1` - describe the first 10-byte free segment (bytes 0-9)
+`#2` - describe the other free segment (bytes 20-29)
+
+Again, request for something bigger then 10 bytes will fail because there is no contiguous chunk of memory for this. What about less then 10 bytes?
+
+Request for single byte of memory:
+In this case, the allocator will perform an action known as **splitting**. Find a free chunk of memory that can satisfy the request and split it into two. (thought that this split divide not on equal parts). Here allocator finds entry in `free-list` (10) and divide its space into two parts 9 and 1. Second part (1) returns to the caller, first part (9) still remain on the list.
+
+Now free list looks like this:
+`head -> #1(addr: 0, len: 10) -> #2(addr: 21, len: 9) -> NULL`
+
+**coalescing**:
+What happens when an applications calls `free(10)`, thus returning the space in the middle of the heap. After this free list might looks like this:
+`head -> #1(addr: 0, len: 10) -> #2(addr: 20, len: 10) -> NULL`
+
+Note that right now the entire heap if free, but is divided into 3 chunk of 10 bytes. And again if user request memory chank bigger then 10 bytes - NULL.
+
+To avoid this problem allocator will use calesce of free space.
+The idea is simple:
+> when returning a free chunk in memory, look carefully at the addresses of the chunk you are returning as well as the nearby chunks of free space; if the newlyfreed space sits right next to one (or two, as in this example) existing free chunks, **merge** them into a single larger free chunk.
+
+`head -> #1(addr: 0, len: 30) -> NULL`
+
+### Tracking The Size Of Allocated Regions
