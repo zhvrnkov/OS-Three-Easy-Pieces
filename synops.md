@@ -1389,3 +1389,180 @@ The idea is simple:
 `head -> #1(addr: 0, len: 30) -> NULL`
 
 ### Tracking The Size Of Allocated Regions
+Because `free` call takes only single argument which is *pointer* the allocator needs to know the size of memory to which that *pointer* point. To accomplish this task, most allocators store a little bit of extra information in a **header** block.
+
+Header:
++ the size of the allocated region (if `malloc(20)` then stores 20)
++ may contains additional pointers (to speed up deallocation)
++ or magic number (random?) to provide additional integrity checking.
+
+```c
+typedef struct __header_t {
+    int size;
+    int magic;
+} header_t;
+
+sizeof(header_t); // 4
+
+void free(void(*) ptr) {
+    header_t (*)hptr = (void (*))ptr - sizeof(header_t);
+    ...
+    assert(hptr->magic == 1234567);
+    ...
+}
+```
+
+**Notice** that when allocator handle request for `N` bytes it needs to find free chunk, that bigger then `N` bytes (because of header).
+
+### Embedding A Free List
+Building such a list inside the free space itself:
++ we have 4KiB chunk of memory (i.e. heap)
++ to manage this as a free list we first have to initialize said list. The list should have one entry of size `4KiB - header size`
+
+```c
+typedef struct __node_t {
+    int size;
+    struct __node_t (star)next;
+} node_t;
+```
+
+`mmap` - one of system calls to building heap
+
+```c
+node_t *head = mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
+head->size = 4096 - sizeof(node_t);
+head->next = NULL;
+```
+
+The main part of this paragraph is illustrated in paper-note, but ideas are simple:
+1. find in free list
+2. split into two, return pointer to desired memory to user and new `head` pointer to free list
+> Notice that pointer to requested memory is pointed to memory itself (below header), but `head` pointer is pointed to header of memory
+
+3. assumes 8 byte headers
+4. don't forget to *coalesce* the free list to avoid things messing up.
+
+### Growing The Heap
+If heap runs out of space, what should we do? Just return `NULL`!
+> Most traditional allocators **start with a small-sized heap** and then request more memory from the OS when they run out
+
+## 17.3 Basic Strategies
+1. Best fit - go through free list and find smallest chunk of memory that fits the requested amount
+2. Worst fit - through free list and find biggest chunk of memory
+3. First fit - find first block that satisfy desired conditions
+4. Next fit - keep pointer to locations, that it was looking last. Start from this location for next attempt.
+
+### Examples
+`head - 10 -> 30 -> 20 -> null`
+
+`malloc(15)`
+Best fit: search whole list and find smallest entry:
+`head - 10 -> 30 -> 5 -> null`
+
+Worst fit: search whole list and find biggest entry:
+`head - 10 -> 15 -> 20 -> null`
+
+First fit in this example is behave like worst fit. But there is difference in search coast: worst fit go through whole list, first fit just find first that matches.
+
+## 17.4 Other Approaches
++ segregated lists
++ slab allocators
++ objects caches
++ binary buddy allocator
+
+### The problems of segmentation
+> external fragmentation - physical memory becomes full of little holes of free space, making it difficult to allocate new segments, or to grow existing ones.
+
+> internal fragmentation - wasted of space between segments
+
+Let take a look at common use of memory allocator in some program. First we requested some amount of memory (we initialize 3 instances of some class). Now our memory is looks like this:
+`(in use), (in use), (in use), free...`
+
+Then we allocate some another classes
+
+`(in use) x 10, free...`
+
+Then some of instances from this instance queue will freed up, and we got
+`(in use) x 5, free, free, (in use) x3, free...`
+
+Just right now we got a mess in free list, but here we go again:
+`(in use) x 2, free, (in use) x2, free, free, (in use) x3, free...`
+
+Coalescing is impossible, memory rearrangement is complicated. Request for 3 chunks of memory will make it worse, growing existing instances isn't too easy.
+
+**Main problems** is external fragmentation and problem of increasing existing used memory.
+
+# Paging: Introduction
+
+Instead of dividing things into *variable-sized* pieces, as we do with **segmentation**, lets divide them into *fixed-sized* pieces. In virtual memory we call this idea **paging**.
+
+Instead of splitting up the address space into segments (code, stack, heap), we divide it into fixed-sized units, each of which we call **page**. Correspondingly, we view physical memory as an array of fixed-sized slots called **page frames**.
+
+##### THE CRUX: HOW TO VIRTUALIZE MEMORY WITH PAGES
+
+## 18.1 A simple example and overview
+With **paging** a simple 64-byte address space is:
++ in VM just 4 16-byte pages, which is ordering one by one
+`p0 -> p1 -> p2 -> p3`
++ in PM just 4 16 byte pages, which is scattered across physical memory, which is also N number of pages.
+`p0 (addr 1024) -> p1 (addr 256) -> p2 (addr 128) -> ...`
+
+
+> we won’t, for example, make assumptions about the direction the heap and stack grow and how they are used
+
+##### Q: and here is the question. How address space is  constructed in paging?
+
+The most useful advantage of **paging** is that when OS receive the 64 byte request, it do not need not find solid 64 byte memory block, **it just need to find 4 pages**.
+For this OS just keeps a **free list** of all free pages for this, and just grabs the first four free pages off of this list.
+
+To record where each virtual page of AS is placed in physical memory, OS usually keeps *per-process* data structure known as a **page table**. Here is the data example, that is stored inside that table:
+```
+Virtual page 0 -> Physical Frame 3
+VP1 -> PF7
+VP3 -> PH5
+...
+```
+
+```
+movl <virtual address> %eax
+```
+
+To **translate** va to pa, we need to split va into 2 components:
++ VPN - virtual page number
++ offset (in this page)
+
+For our example (size of AS is 64 byte) we need (2^6 = 64) 6 bits for virual address.
+First two bits (5 and 4 digits) is VPN
+Last four bits (3, 2, 1 and 0 digits) is offset
+
+64 byte AS is 4 pages.
+First two bits is for page number, 2^2 = 4. Perfect!
+Size of page is 16 bytes, 2^4 = 16. Perfect!
+
+Now real example:
+`movl 21 %eax`
+
+21 = 0b010101
+010101: 01 - number of virtual page
+        0101 - offset
+VPN = 1
+Offset = 5
+
+Now we know the number of VP and go further: look at page table and find physical fragment of this page. **Find Physical Frame Number (PFN) of this VP**.
+
+**To translate VA in paging to PA we need just change VPN to PFN**.
+
+PFN in our example for 1 VP is 7.
+
+`01`0101 -> address translation -> `111`0101
+
+##### Q:
+1. Where are these page tables stored? (In proc structure? I am sure in RAM)
+2. Typical content of page table and how big they are?
+3. Does paging make the system too slow? (because page tables are stored in the RAM, except fast base/bound registers pair per segment?)
+
+## 18.2 Where are Page Tables Stored?
+
+> For example, imagine a typical **32-bit** address space, with **4KB pages**. This virtual address splits into a **20-bit VPN** and **12-bit offset**
+
+Yes! In 32-bit systems, the memory address is 32 bits, 32 digits, 0 or 1. Offset is last bits of address, VPN is first bits of address. 4 KiB = 4096 = 2^12 => we need 12 bits to represent **any offset**, and remaining 20 bits we could use for VPN, which is mean, that the largest possible address space is consists of 2^20 Virtual Pages, which is 4 KiB of size. In other words biggest AS is 2^20 * 4KiB = 2^20 * 4096 bytes
