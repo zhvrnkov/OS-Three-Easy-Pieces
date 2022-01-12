@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>synops</title>
+  <style>
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <style>
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<h1 id="intro-to-os.">Intro to OS.</h1>
+<h5 id="von-neuman-model-of-computing">Von Neuman model of computing:</h5>
+<p>CPU fetches instruction (from memory), decodes it, and executes.</p>
+<h5 id="operations-system">Operations System:</h5>
+<p>“body of software”, responsible for making it easy to run programms, allowing programs to share the memory, enabling programs to interact with devices etc.</p>
+<h1 id="the-crux-of-the-problem-how-to-virtualize-resources-how-os-doing-this">The Crux of the Problem: How to virtualize resources? How OS doing this?</h1>
+<p>The primery way the OS does this is through a general technique that we call <strong>virtualization</strong> - the OS takes a <strong>physical</strong> resource (CPU, or memory, or disk) and transforms it into more general, powerful, and easy-to-use <strong>virtual</strong> for of itself.</p>
+<h1 id="virtualizing-the-cpu">2.1 Virtualizing the CPU:</h1>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1"></a><span class="pp">#include </span><span class="im">&lt;stdio.h&gt;</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="pp">#include </span><span class="im">&lt;stdlib.h&gt;</span></span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="pp">#include </span><span class="im">&lt;sys/time.h&gt;</span></span>
+<span id="cb1-4"><a href="#cb1-4"></a><span class="pp">#include </span><span class="im">&lt;assert.h&gt;</span></span>
+<span id="cb1-5"><a href="#cb1-5"></a><span class="pp">#include </span><span class="im">&quot;common.h&quot;</span></span>
+<span id="cb1-6"><a href="#cb1-6"></a></span>
+<span id="cb1-7"><a href="#cb1-7"></a><span class="dt">int</span> main(<span class="dt">int</span> argc, <span class="dt">char</span> *argv[]) {</span>
+<span id="cb1-8"><a href="#cb1-8"></a>    <span class="cf">if</span> (argc != <span class="dv">2</span>) {</span>
+<span id="cb1-9"><a href="#cb1-9"></a>        fprintf(stderr, <span class="st">&quot;usage: cpu &lt;string&gt;</span><span class="sc">\n</span><span class="st">&quot;</span>);</span>
+<span id="cb1-10"><a href="#cb1-10"></a>        exit(<span class="dv">1</span>);</span>
+<span id="cb1-11"><a href="#cb1-11"></a>    }</span>
+<span id="cb1-12"><a href="#cb1-12"></a>    <span class="dt">char</span>* str = argv[<span class="dv">1</span>];</span>
+<span id="cb1-13"><a href="#cb1-13"></a>    <span class="cf">while</span> (<span class="dv">1</span>) {</span>
+<span id="cb1-14"><a href="#cb1-14"></a>    Spin(<span class="dv">1</span>);</span>
+<span id="cb1-15"><a href="#cb1-15"></a>        printf(<span class="st">&quot;%s</span><span class="sc">\n</span><span class="st">&quot;</span>, str);</span>
+<span id="cb1-16"><a href="#cb1-16"></a>    }</span>
+<span id="cb1-17"><a href="#cb1-17"></a>    <span class="cf">return</span> <span class="dv">0</span>;</span>
+<span id="cb1-18"><a href="#cb1-18"></a>}</span></code></pre></div>
+<ul>
+<li><code>Spin(1)</code> - repeadetly chekcs the time and return once in has run for a second.</li>
+<li>after <code>Spin(1)</code> returns, the program print some Command Line input.</li>
+<li>because of while(1) this is repeats forever.</li>
+<li>Also notice that in this example we have CPU with single core.</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1"></a>$ ./program A &amp; ; ./program B &amp; ; ./program C &amp; ; ./program D &amp;</span>
+<span id="cb2-2"><a href="#cb2-2"></a><span class="co">// output is whole mess of A,B,C and D&#39;s.</span></span></code></pre></div>
+<h5 id="q-so-the-question-is-how-is-it-possible-with-single-core-in-cpu-how-cpu-can-handle-it">Q: so the question is how is it possible with single core in CPU? How CPU can handle it?</h5>
+<h5 id="a-virtualizing-the-cpu.">A: virtualizing the CPU.</h5>
+<blockquote>
+<p>Of course, to run programs, and stop them, and otherwise tell the OS which programs to run, there need to be some interfaces (APIs) that you can use to communicate your desires to the OS.</p>
+</blockquote>
+<h5 id="q-also-if-we-come-back-to-our-example-when-we-simultaneously-run-some-number-of-programs-and-ask-yourself-what-program-should-run-first">Q: also, if we come back to our example when we simultaneously run some number of programs and ask yourself what program should run first?</h5>
+<h5 id="a-this-choice-is-responsibility-of-os-policy.">A: this choice is responsibility of <strong>OS policy</strong>.</h5>
+<h1 id="virtualizing-memory">2.2 Virtualizing Memory</h1>
+<ul>
+<li>Memory is just an array of bytes.</li>
+<li>to read it, one must specify an <strong>address</strong></li>
+<li>to write it, one must also specify the data to be written to the given address.</li>
+</ul>
+<blockquote>
+<p>Don’t forget that each instruc- tion of the program is in memory too; thus memory is accessed on each instruction fetch.</p>
+</blockquote>
+<p><strong>code in CodeSnippets</strong>: 1. with multiple running instances of a programm we get the same output for each. 2. The prints one address of memory, prints same value for it 3. Then the printed address cannot be physical address of memory - this is virtual address form <strong>virtual address space</strong>. Each proccess access its own private v.s.a. which the OS somehow maps onto physical memory of the macine.</p>
+<h1 id="concurrency">2.3 Concurrency</h1>
+<h5 id="note-look-at-previous-example-we-got-2-processes-for-each-process-os-provide-virtaul-address-space---each-process-have-it.-consider-now-that-thread-is-some-kind-of-process-inside-parent-process---the-confuse-is-that-thread-dont-have-v.a.s.-they-use-parents-v.a.s.-this-is-what-makes-concurrent-operations-complicated.">Note: look at previous example: we got 2 processes, for each process OS provide virtaul address space - each process have it. Consider now that thread is some kind of process inside “parent” process - the confuse is that thread don’t have v.a.s., they use parent’s v.a.s. This is what makes <strong>concurrent</strong> operations complicated.</h5>
+<blockquote>
+<p>We use this concep- tual term to refer to a host of problems that arise, and must be addressed, when working on many things at once (i.e., concurrently) in the same program.</p>
+</blockquote>
+<h1 id="the-crux-how-to-build-correct-concurrent-programs.">The Crux: HOW TO BUILD CORRECT CONCURRENT PROGRAMS.</h1>
+<p><strong>code in CodeSnippets</strong>: this happens because <code>counter++</code> operation occupies 3 instruction: 1. fetch data from RAM into register 2. increment it 3. load data back</p>
+<h1 id="persistence">2.4 Persistence</h1>
+<ul>
+<li>DRAM - stores memory in a volatile manner (power off -&gt; memory lost)</li>
+<li>need persistent storage: some hardware which will conform this.</li>
+<li>such hardware comes in the form of I/O device: <strong>hard drive</strong>, although <strong>solid-state drive</strong>.</li>
+<li>software that manage disk is called <strong>file system</strong>.</li>
+</ul>
+<blockquote>
+<p>Unlike the abstractions provided by the OS for the CPU and memory, the OS does not create a private, virtualized disk for each application.</p>
+</blockquote>
+<h1 id="the-crux-how-to-store-data-persistently.">The Crux: HOW TO STORE DATA PERSISTENTLY.</h1>
+<p><strong>code in CodeSnippets</strong>: + <code>open()</code>, <code>close()</code> and <code>write()</code> - is <strong>system calls</strong> (this s.calls are routed to the part of the OS called <strong>file system</strong> which then handles the requests and returns some kind of error code to the user - this is how system calls works: programm call it, pass control to OS, OS handles the request, return the output and control to program).</p>
+<h1 id="some-history">2.6 Some History</h1>
+<h3 id="early-operating-systems-just-libraries">Early Operating Systems: Just Libraries</h3>
+<blockquote>
+<p>Basically, it was just a set of libraries of commonly-used functions; for example, instead of having each programmer of the system write low-level I/O handling code, the “OS” would provide such APIs, and thus make life easier for the developer.</p>
+</blockquote>
+<h3 id="protection-system-calls">Protection: System Calls</h3>
+<ul>
+<li><p>code which run on behalf of the OS was special; it had control of devices and thus should be treated dif- ferently than normal application code</p></li>
+<li><p>imagine if any code could have such permisions. The notion of privacy goes out the window, as any program could read any file.</p></li>
+<li><p>Thus implementing the <strong>file system</strong>, but as a library it make a little sense.</p></li>
+<li><p>To improve this <strong>system calls</strong> were invented and firstly come with <em>Atlas computing system</em>:</p>
+<ul>
+<li>Instead of providing OS routines as a library (where you just make <strong>procedure calls</strong> to access them), the idea here was to add a special pair of hardware instructions and hardware state to make the transition into the OS a more formal, controlled process.</li>
+</ul></li>
+</ul>
+<h5 id="system-call-vs.-procedure-call">System call vs. Procedure call:</h5>
+<p>System call transfers control (i.e. jumps) into the OS while simultaneously raising the <strong>hardware privilege level</strong>. User applications run in <strong>user mode</strong> which means the hardware restricts what ap- plications can do.</p>
+<blockquote>
+<p>for example, an application running in user mode can’t typically initiate an I/O request to the disk, access any physical memory page, or send a packet on the network</p>
+</blockquote>
+<ol type="1">
+<li>System call from user application</li>
+<li>Hardware transfers control to pre-specified <strong>trap handler</strong> (OS set it up previously)</li>
+<li>Privilege level set to <strong>kernel mode</strong></li>
+<li>OS done servicing this request</li>
+<li>OS passes control back to the application (via special <strong>return-from-trap</strong> instruction which reverts to <strong>user mode</strong> and passing control back to where the application left off)</li>
+</ol>
+<h1 id="part-i">PART I</h1>
+<h1 id="virtualization">VIRTUALIZATION</h1>
+<h2 id="the-abstraction-the-process">The Abstraction: The Process</h2>
+<p>process is a <strong>running program</strong></p>
+<h1 id="the-crux-how-to-provide-the-illusion-of-many-cpus">The Crux: HOW TO PROVIDE THE ILLUSION OF MANY CPUS?</h1>
+<p>The OS can run hundred of processes with less then 10 CPUs (cores). This is achivied by <strong>CPU virtualization</strong>: running one process, then stopping it and running another, and so forth, the OS can promote the illusion that many virtual CPUs exist when in fact there is only one physical CPU (or a few). This basic technique is know as <strong>time sharing</strong> of the CPU, allows users to run as many concurrent processes as they would like; the potential cost is performance, as each will run more slowly if the CPU(s) must be shared.</p>
+<p>To implement it (v. of CPU) the OS will need bot some low-level machinery as well as some hight-level intelligence: 1. <strong>Machinery</strong> - low-level mechanisms; <strong>Mechanisms</strong> - are low-level methods or protocols that implement a needed piece of functionality. 2. <strong>Polices</strong> - algorithms for making some kind of decision within the OS.</p>
+<h5 id="note-the-policy-that-dedicate-what-process-will-run-first-is-called-scheduling-policy.">Note: the policy that dedicate what process will run first is called <strong>scheduling policy</strong>.</h5>
+<h1 id="the-abstraction-a-process">4.1 The Abstraction: A Process</h1>
+<p>The abstraction provided by the OS of a running program is something we will call a <strong>process</strong>.</p>
+<p><strong>Machine state</strong> of a process is what program can read or update when it is running. What parts of a machine are important for program execution.</p>
+<p><strong>Memory</strong> is obvious part of a machine state. Instructions lie in memory; some instructions works with memory (address space). Thus the memory that the process can address (called its address space) is part of the process.</p>
+<p>Also registers (Program counter - tells us which instruction of the process is currently being executed), similarly <strong>stack pointer</strong> and associated <strong>frame pointer</strong> (are used to manage the stack for function parameters, local variables, and return addresses).</p>
+<h1 id="tip-policy-and-mechanism">TIP: Policy and Mechanism</h1>
+<p>Mechanism is about <em>how</em>: how does an operating system perform a context switch?</p>
+<p>Policy is about <em>which</em>: which process should the operating system run right now?</p>
+<h5 id="stack-pointer-and-frame-pointer">Stack Pointer and Frame Pointer</h5>
+<p>Frame pointer - the value of Stack Pointer before function call. A frame pointer of a given invocation of a function is a copy of the stack pointer as it was before the function was invoked.</p>
+<h1 id="process-api">4.2 Process API</h1>
+<ul>
+<li>Create: some method to create a new process. Typing command to shell, double-click app icon is invoke OS to create a new process for that program.</li>
+<li>Destroy: destroy process forcefully.</li>
+<li>Wait: stop running a process.</li>
+<li>Miscellaneous Control: other that killing or waiting for a process. Some systems allows to suspend process and the resume it and so forth.</li>
+<li>Status: some status information about a process.</li>
+</ul>
+<h1 id="process-creation-a-little-more-detail">4.3 Process Creation: A Little More Detail</h1>
+<h5 id="q-how-does-the-os-get-a-program-up-and-running-how-does-process-creation-actually-work">Q: how does the OS get a program up and running? How does process creation actually work?</h5>
+<h5 id="a">A:</h5>
+<ol type="1">
+<li>to run program, OS need to load its code and any static data (e.g. initialized variables) into memory (address space of a process).</li>
+</ol>
+<blockquote>
+<p>Programs initially reside on disk in some kind of executable format; thus, the process of loading a program and static data into memory re- quires the OS to read those bytes from disk and place them in memory somewhere</p>
+</blockquote>
+<blockquote>
+<p>In early (or simple) operating systems, the loading process is done ea- gerly, i.e., all at once before running the program; modern OSes perform the process lazily, i.e., by loading pieces of code or data only as they are needed during program execution</p>
+</blockquote>
+<ol start="2" type="1">
+<li>allocate memory for <strong>run-time</strong> stack</li>
+</ol>
+<blockquote>
+<p>As you should likely already know, C programs use the stack for local variables, function parameters, and return addresses</p>
+</blockquote>
+<blockquote>
+<p>The OS will also likely initial- ize the stack with arguments; specifically, it will fill in the parameters to the main() function, i.e., argc and the argv array</p>
+</blockquote>
+<ol start="3" type="1">
+<li>allocate some memory for <strong>heap</strong>.</li>
+</ol>
+<blockquote>
+<p>Heap will be small at first; as the program runs, and requests more memory with <code>malloc()</code> library API, the OS may get involved and allocate more memory to the process to help satisfy such calls.</p>
+</blockquote>
+<ol start="4" type="1">
+<li>some other initialization tasks regarding I/O.</li>
+</ol>
+<blockquote>
+<p>For example, in UNIX systems, each process by default has three open file descriptors, for standard input, output, and error; these descriptors let programs easily read input from the terminal as well as print output to the screen</p>
+</blockquote>
+<ol start="5" type="1">
+<li>finally, set the stage of program execution</li>
+</ol>
+<blockquote>
+<p>In C this is jumping to <code>main</code> routine and and transfers control to the <strong>CPU</strong></p>
+</blockquote>
+<h1 id="process-state">4.4 Process State</h1>
+<ul>
+<li>Running: a process is running on a processor. Executing instructions of that process</li>
+<li>Ready: process is ready to run, but OS has chosen not to run it at this given point</li>
+<li>Blocked: in the blocked state, a process has performed some kind of operation that makes it not ready to run until some other event takes place</li>
+</ul>
+<blockquote>
+<p>A common example: when a process initiates an I/O request to a disk, it becomes blocked and thus some other process can use the processor.</p>
+</blockquote>
+<p>Running &lt;== Scheduled/Descheduled ==&gt; Ready Running (I/O: initiate) ==&gt; Blocked &lt;== (I/O: done) Ready</p>
+<p>Being moved from <strong>running</strong> to <strong>ready</strong> means that the process has been <strong>scheduled</strong>. Reverse is <strong>descheduled</strong>.</p>
+<p>Once a process come <strong>blocked</strong>, OS will keep it as such until some events occur (e.g. I/O completion).</p>
+<h1 id="data-structures">4.5 Data Structures</h1>
+<p>OS is programm and also have some key data structures that track various relevant peices of information (e.g. <strong>process list</strong> for all processes that are ready as well as some additional inforamtion about running processes; also OS needs to track blocked processes in some way because OS will do something with blocked process <strong>when some events occur</strong> (I/O event complete)).</p>
+<p><strong>TODO</strong>: make code snippet for this <strong>code for xv6 Proc Structure</strong></p>
+<blockquote>
+<p>Also, a process could be placed in a final state where it has exited but has not yet been cleaned up (in UNIX-based systems, this is called the zombie state1). This final state can be useful as it allows other processes (usually the parent that created the process) to examine the return code of the process and see if the just-finished process executed successfully (usually, programs return zero in UNIX-based systems when they have accomplished a task successfully, and non-zero otherwise).</p>
+</blockquote>
+<h5 id="q-after-this-quote-i-wonder-about-returns.-how-they-actually-works">Q: after this quote i wonder about returns. How they actually works?</h5>
+<ul>
+<li>Running c program in shell. <code>return 0;</code> from <code>main</code>. After completion we got something “Program ended with exit code: 0”. At current moment i suppose that parant process of any C program which was called in terminal is shell. Here is the question: how shell get that return code? Profram runs, return 0 and shell somehow handle it like callback? Or program run, return 0 and being setted to final (zombie) state, after some amount of time (small amount) the parent process somehow examinate that return code of the child process and manipulate with that (in case of shell it will just print it). Based on how i understand that text snippet from book the last way is the right way.</li>
+</ul>
+<h5 id="q-also-can-parent-process-get-acces-to-address-space-of-child-process-if-no-then-how-parent-process-can-manage-the-return-code">Q: also, can parent process get acces to address space of child process? If no, then how parent process can manage the return code?</h5>
+<h5 id="q-how-preciesly-parent-process-know-that-the-child-process-is-finished.-by-look-at-final-process-memory-or-somehow-handle-the-return-or-what">Q: how preciesly parent process know that the child process is finished. By look at final process memory? Or somehow handle the return? Or what?</h5>
+<h5 id="q-i-think-understanding-the-wait-system-call-will-clean-that-part.">Q: i think understanding the <code>wait</code> system call will clean that part.</h5>
+<h3 id="homework">Homework:</h3>
+<p>-I RUN_IO_IMMEDIATE with -S SWITCH_ON_IO is some sort of asynchronous IO when we call IO, while waiting execute other instructions, when IO complete immediate processed it (run another io) and so forth. Thus i think that running IO immediate is really good idea in most cases. For better performance i’ll also recommend to run IO immediate but without interrupting other processes. When we interrupt process, we need to stash its instruction in RAM, clear registers, load IO instruction - this is loses in performance too. The better way is allow last process to complete its instructions and then processed IO calls (in that case we reduce IO performance by idle it while waiting - not perfect too).</p>
+<p>Interesing task about process tracing between states.</p>
+<h1 id="interlude-process-api">Interlude: Process API</h1>
+<h1 id="the-crux-how-to-create-and-control-process">The Crux: How to create and Control Process</h1>
+<h1 id="the-fork-system-call">5.1 The <code>fork()</code> System Call</h1>
+<ul>
+<li>is used to create a new process.</li>
+</ul>
+<p><strong>code snippet p1.c</strong> <code>fork()</code>: 1. create new, child process 2. the body (or code if you like) starts after call <code>fork()</code> in “parent-code” (if that will be before <code>fork()</code> call, then we will got recursivly creation of new processes). 3. Also, by this reason, <code>rc == 0</code> in children process because <code>int rc = fork()</code> didn’t get called.</p>
+<blockquote>
+<p>play with it code. Remove <code>wait(NULL</code> but notice, that without <code>wait</code> call that code isn’t derministic (parent is gone, but child is going).</p>
+</blockquote>
+<h1 id="the-wait-system-call">5.2 The <code>wait()</code> System Call</h1>
+<ul>
+<li>system call <code>wait</code> will not return until all child process has run and exited</li>
+</ul>
+<h1 id="the-exec-system-call">5.3 The <code>exec()</code> System Call</h1>
+<ul>
+<li>is useful when you want to run a program that is different from the calling (parent, current) program.</li>
+</ul>
+<p><strong>code snippet p3.c</strong> - print which will not has been called. 1. This is because <code>execvp()</code> load the exact code (and all neccessary static data) to the place, where it’s been called. 2. The heap and stack and other parts of the memory space of the program re-initialized (because we exactly add CODE dynamically!!! compiler know nothing about it. We add code at runtime) 3. Then the OS simply runs that program, passing in any arguments as the argv of that process. Thus, it does not create a new process; rather, it transforms the currently running program (formerly p3) into a different running program (wc). 4. print never get called because in body of <code>wc</code> (code of which were inserted before that print) located <code>return</code> statement.</p>
+<h1 id="why-motivating-the-api">5.4 Why? Motivating The API</h1>
+<h5 id="q-do-not-clear-understand-terms-and-they-relationships-shell-and-system-calls-shell-and-os">Q: do not clear understand terms and they relationships: shell and system calls, shell and os</h5>
+<h5 id="q-also-play-with-fork-and-exec-calls.-why-they-are-separate-what-we-got-from-they-separation-what-we-will-got-if-they-become-integral">Q: also play with <code>fork</code> and <code>exec</code> calls. Why they are separate, what we got from they separation, what we will got if they become integral?</h5>
+<p>Briefly explain what is <strong>shell</strong> - just program that shows prompt and waits for you tu type something in it. Shell is program -&gt; you type a command -&gt; Shell call <code>fork</code> -&gt; some configurations (based of your arguments etc.) -&gt; <code>execvp</code></p>
+<p>The separation of <code>fork</code> and <code>exec</code> allowing many things. For example - output redirections.</p>
+<p><code>$ wc p3.c &gt; newline.txt</code></p>
+<p>after <code>fork</code> get called, shell redifin standart output to <code>newline.txt</code></p>
+<p>also add this to <code>p3.c</code> code snippet:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1"></a><span class="cf">if</span> (rc == <span class="dv">0</span>) {</span>
+<span id="cb3-2"><a href="#cb3-2"></a>  close(STDOUT_FILENO);</span>
+<span id="cb3-3"><a href="#cb3-3"></a>  open(<span class="st">&quot;./p4.output&quot;</span>, O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU);</span>
+<span id="cb3-4"><a href="#cb3-4"></a>  ...</span>
+<span id="cb3-5"><a href="#cb3-5"></a>}</span></code></pre></div>
+<ul>
+<li>when parent get called and <code>fork</code> inside its body didn’t get called, the first file desciptor which is available is STDOUT_FILEN (look more about it in chapter). When <code>fork()</code> get called and we are inside children process in <code>if (rc == 0) { ... }</code> we close that file desciptor (output), and open another. Now all <code>prints</code> and etc will be sended to that output.</li>
+</ul>
+<p>Unix pipe <code>|</code> - in bash: <code>grep -o foo file | wc -l</code>. Output of one process become input of another via connecting by <strong>pipe</strong>.</p>
+<h3 id="homework-2">Homework #2</h3>
+<h5 id="unsolved-questions">Unsolved Questions:</h5>
+<ol type="1">
+<li><p>Commited code: the <code>printf</code> statement get called in child body even if it placed before <code>fork</code> call. It depends on <code>\n</code> spec. symbol. Very interesting situation</p></li>
+<li><p>Firstly, I had confused when I assume that x isn’t equal 0 (because I thought that <code>int x =10</code> is the same as <code>int rc = fork()</code>. <code>rc</code> in the child process is equal 0 (because <code>rc</code> is child process) and I thought that situation with <code>x</code> will be the same. I was wrong, and all variable declaration are works (the best ways of thinking about it is <code>fork</code> -which is create this child- will be called inside that child but returns 0). Neverless, the answer of the homework exerciese is: 100, parent and child has their own address spaces.</p></li>
+<li><p>Yes, this is default behavior (file descriptors and other kind of such things are transfered to the child process, but child process can change it in own code only for himself.</p></li>
+</ol>
+<h5 id="dup-system-call"><code>dup</code> system call:</h5>
+<ul>
+<li><p>The <code>dup()</code> system call creates a copy of a file descriptor.</p>
+<ul>
+<li>It uses the <strong>lowest-numbered unused descriptor</strong> for the new descriptor.</li>
+<li>If the copy is successfully created, then the original and copy file descriptors may be used interchangeably.</li>
+<li>They both refer to the same open file description and thus share file offset and file status flags.</li>
+</ul></li>
+</ul>
+<blockquote>
+<p>Currently i don’t know much about file descriptors (but 0 - stdin, 1 - stdout, 2 - stderr). So dup(1) will create and return a copy of stdout. <code>close(STDOUT_FILENO)</code> is the same (in brand new program) as <code>close(1)</code> (while 1 is stdout - you can change it). + The <code>dup2()</code> system call is similar to dup() but the basic difference between them is that <strong>instead of using the lowest-numbered unused file descriptor, it uses the descriptor number specified by the user</strong>. So you cannot write <code>dup2(1)</code>, but you can:</p>
+</blockquote>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1"></a>    <span class="dt">int</span> saved = dup(<span class="dv">1</span>);</span>
+<span id="cb4-2"><a href="#cb4-2"></a>    <span class="dt">int</span> anotherSaved;</span>
+<span id="cb4-3"><a href="#cb4-3"></a>    dup2(saved, anotherSaved);</span></code></pre></div>
+<p>More preciesly:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1"></a><span class="dt">int</span> dup2(<span class="dt">int</span> oldfd, <span class="dt">int</span> newfd);</span>
+<span id="cb5-2"><a href="#cb5-2"></a><span class="co">// oldfd: old file descriptor</span></span>
+<span id="cb5-3"><a href="#cb5-3"></a><span class="co">// newfd new file descriptor which is used by dup2() to create a copy</span></span></code></pre></div>
+<p>If child and parent will write concurrently: I cannot achive concurrently writing in it as i understand it. They write in order.</p>
+<ol start="3" type="1">
+<li><p>You can achieve this by <code>sleep(int)</code> system call. I thought that there is some way to do it with <code>while</code>, but since parent and child has their own address spaces, I think it is impossible.</p></li>
+<li><ul>
+<li><code>execl</code> and <code>execlp</code> are the same, but first argument of l should be path (<code>/bin/ls</code>), but in lp first argument should be file (<code>ls</code>)</li>
+<li><code>execvp()</code> only can work with array <code>execvp(myargs[0], myargs)</code>. <code>myargs[size(of: myargs)] == NULL</code>. Second argument must be <code>null</code> terminated array of strings</li>
+</ul></li>
+</ol>
+<p>They all do the same things but with different kind of arguments.</p>
+<ol start="5" type="1">
+<li><p><code>wait</code> returns <code>-1</code>. If child will <code>wait</code> and its doesn’t have child processes, then nothing happend. If opposite, then default behavior (it just waits for child of himself).</p></li>
+<li><p><code>waitpid</code> is useful when we want to wait some starting process. with just <code>wait</code> the process can only wait of its children processes, but with <code>waitpid</code>…</p></li>
+<li><p>Child prints to nothing (the file and console will not have a sign of it) - meybe it will write for <code>dev/null</code> ##### Q: What preciesly happens?</p></li>
+<li></li>
+</ol>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1"></a>    <span class="dt">int</span> p[<span class="dv">2</span>];</span>
+<span id="cb6-2"><a href="#cb6-2"></a>    write(p[<span class="dv">1</span>], msg, msgsize);</span>
+<span id="cb6-3"><a href="#cb6-3"></a>    read(p[<span class="dv">0</span>], msg, msgsize);</span></code></pre></div>
+<p><strong>Syntax</strong>:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1"></a><span class="dt">int</span> pipe(<span class="dt">int</span> fds[<span class="dv">2</span>]);</span>
+<span id="cb7-2"><a href="#cb7-2"></a></span>
+<span id="cb7-3"><a href="#cb7-3"></a>Parameters :</span>
+<span id="cb7-4"><a href="#cb7-4"></a>fd[<span class="dv">0</span>] will be the fd(file descriptor) <span class="cf">for</span> the</span>
+<span id="cb7-5"><a href="#cb7-5"></a>read end of pipe.</span>
+<span id="cb7-6"><a href="#cb7-6"></a>fd[<span class="dv">1</span>] will be the fd <span class="cf">for</span> the write end of pipe.</span>
+<span id="cb7-7"><a href="#cb7-7"></a>Returns : <span class="dv">0</span> on Success.</span>
+<span id="cb7-8"><a href="#cb7-8"></a>-<span class="dv">1</span> on error.</span></code></pre></div>
+<h5 id="q-need-more-information-about-file-descriptors-pipes-read-and-write-sytem-calls.">Q: need more information about file descriptors, pipes, read and write sytem calls.</h5>
+<h1 id="mechanism-limited-direct-execution">Mechanism: LIMITED DIRECT EXECUTION</h1>
+<p><strong>:</strong> run one process for a little while, then run another one, and so forth - <strong>time sharing</strong>. By time shaing the <strong>CPU</strong> in this manner, virtualization is achieved.</p>
+<p>Few chalenges in it: 1. <em>Performance</em>: how can we implement virtualization without adding excessive overhead to the system? (virtualize CPU in manner, that different from <strong>time sharing</strong>?) 2. <em>Control</em>: how can we run processes efficiently while retaining control over the CPU?</p>
+<h5 id="the-crux-how-to-efficiently-virtualize-the-cpu-with-control">THE CRUX: HOW TO EFFICIENTLY VIRTUALIZE THE CPU WITH CONTROL?</h5>
+<h1 id="basic-technique-limited-direct-execution">6.1 Basic Technique: Limited Direct Execution</h1>
+<h3 id="direct-execution">Direct execution:</h3>
+<table>
+<thead>
+<tr class="header">
+<th>OS</th>
+<th>Program</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Create entry for process list</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>Allocate memory for program</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>Load program into memory</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>Set up stack with argc/argv</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>Clear registers</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>Execute call main()</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td></td>
+<td>Run main()</td>
+</tr>
+<tr class="even">
+<td></td>
+<td>Execute return from main</td>
+</tr>
+<tr class="odd">
+<td>Free memory of process</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>Remove from process list</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>The problems if we use such approach and want virtualization is:</p>
+<ol type="1">
+<li><p>if we just run a program, how can the OS make sure the program doesn’t do anything that we don’t want it to do, while still running it efficiently?</p></li>
+<li><p>when we are running a process, how does the operating system stop it from running and switch to another process, thus implementing the <strong>time sharing</strong> we require to virtualize the CPU?</p></li>
+</ol>
+<h1 id="problem-1-restricted-operations">6.2 Problem #1: Restricted Operations</h1>
+<p>Direct execution is fast; the program runs natively on the hardware CPU and thus executes as quickly as one would expect.</p>
+<p>But running on the CPU introduces a problem: what if the process wishes to perform some kind of restricted operation.</p>
+<p>Firstly, it seems that this is concern of compiler - to check that written code doesn’t do anything restricted. But what if code do not pass compilation? What if we write code in binary? That is the case. Also! Compiler isn’t CPU, compiler doesn’t run code and you see, that we can dynamically add code by <code>exec</code> system call.</p>
+<h5 id="the-crux-how-to-perform-restricted-operations">THE CRUX: HOW TO PERFORM RESTRICTED OPERATIONS</h5>
+<h5 id="q-why-system-calls-looks-like-procedure-calls">Q: why system calls looks like procedure calls?</h5>
+<h5 id="a-1">A:</h5>
+<p>because in C, the <code>open()</code>, <code>close()</code>, <code>fork()</code> and etc are the procedure calls, but inside these procedure calls is the famous <strong>trap</strong> instruction. Calling <code>open()</code> you execute the procedure call into the <strong>C library</strong>. Inside that call (or any other system call provided) the library used an agreed-upon calling (договоренная на базе вызова) convention with the <strong>kernel</strong> to put the arguments (of that <code>open()</code> call) in <em>well-known locations</em> (stack or specific register), put the system call number into <em>well-known location</em> (stack or specific register) and then executed aformentioned trap instruction. The code in the library after the trap unpacks return values and returns control to the program that issued the system call.</p>
+<p>As mentioned above, we cannot let any process do whatever it like (issue I/O). For avoiding this, system calls were invented. Process call that system call (above answer is about how C call system call), give all control to OS via entering via exectuing <strong>trap instruction</strong>.</p>
+<blockquote>
+<ol type="1">
+<li>This instruction simultaneously jumps into the kernel and raises the privilege level to kernel mode; once in the kernel, the system can now perform whatever privileged operations are needed (if allowed), and thus do the required work for the calling process</li>
+<li>When finished, the OS calls a special return-from-trap instruction, which, as you might expect, returns into the calling user program while simultaneously reducing the privilege level back to user mode.</li>
+</ol>
+</blockquote>
+<p>The hardware in this case needs to be carefull for proper returning from trap. The system call returns something, so hardware and OS needs to take care that current process will handle that results properly.</p>
+<blockquote>
+<p>On x86, for example, the processor will push the program counter, flags, and a few other registers onto a per-process kernel stack; the return-from- trap will pop these values off the stack and resume execution of the user- mode program</p>
+</blockquote>
+<hr />
+<h5 id="q-want-to-know-about-it-more-preciesly.-what-exectly-is-kernel-stack-what-does-stack-pop-after-returning-from-trap-mean">Q: want to know about it more preciesly. What exectly is <strong>kernel stack</strong>? What does stack pop after returning-from-trap mean?</h5>
+<h5 id="a-2">A:</h5>
+<p>got a little mess with stack in general. To summarize my thoughts: 1. I wondered, why reference types are stored on the heap even if we declare such variable at global scope. So I has concluded, that we just need such objects with heap-behavior. The heap is really needy part of any process and process cannot work with dynamic data without heap. We cannot store the dynamic data in stack. So then I decide, that reference types are stored on the heap, because we need in some cases such behavior.</p>
+<p>Part of question about <strong>kernel stack</strong>.</p>
+<p>Why we need such separation in process stack: kernel and user stack?</p>
+<p>Ok, user stack is for process execution in user-mode, kernel stack is for execution system calls of that process.</p>
+<blockquote>
+<p>While the thread is in user space the kernel stack is empty except for the thread_info structure at the bottom.</p>
+</blockquote>
+<h5 id="note">Note:</h5>
+<p>We really need such save user stack mechanism when pass control back to OS. In next, OS can decide to switch context to another process, but for continuing prevoius process, OS need to know about it progress - this is achieved by saving proc structure.</p>
+<blockquote>
+<p>kernel stack isn’t about that. OS do not save process progress into its kernel stack</p>
+</blockquote>
+<p>The real things about <strong>kernel stack</strong> is that OS works with it in <strong>kernel mode</strong>, but why it cannot work with just <strong>user stack</strong> in <strong>kernel mode</strong> (while perfomrming system call)?</p>
+<p>When trap handler correctly handle trap instruction and knows what code should be performed for that system call, the instructions will be executed (because system call is also code!) this is process (but in kernel mode and under OS control) and it is also need stack for local and other variables.</p>
+<h5 id="section">!!!:</h5>
+<p>Back to the beginning: system call -&gt; system call number placed to some register, parameters of system call are in user stack -&gt; trap instruction -&gt; switch to kernel mode -&gt; move parameters for system call to <strong>kernel stack</strong> (save regs to kernel stack) -&gt; jump to trap handler -&gt; perform handle and run bunch of instructions (is system call is process too?) -&gt; got some output before it -&gt; return from-trap -&gt; put output (which is stored in <strong>kernel stack</strong>) to the user stack -&gt; move to user mode -&gt; jump to PC after trap (to executing last process instruction).</p>
+<h5 id="q-is-system-call-is-a-process-but-on-behalf-of-kernel-is-it-use-kernel-stack-in-the-same-way-as-just-process-use-user-stack">Q: is system call is a process (but on behalf of kernel)? is it use kernel stack in the same way, as just process use user stack?</h5>
+<hr />
+<h5 id="q-also-how-does-the-trap-knows-what-code-it-should-run-inside-the-os">Q: Also how does the trap knows what code it should run inside the OS?</h5>
+<h5 id="a-3">A:</h5>
+<blockquote>
+<p>the calling process can’t specify an address in which it will jump. (an address of executable)</p>
+</blockquote>
+<ul>
+<li>Because this code will run at the <strong>kernel mode</strong> and if we could specify that code, we could run some code that was written by yourself at the <strong>kernel mode</strong>. If that so, then concept of <strong>system calls</strong> will be broken.</li>
+</ul>
+<p>The kernel does so by setting up a <strong>trap table</strong> at boot time.</p>
+<blockquote>
+<p>When the machine boots up, it does so in privileged (kernel) mode, and thus is free to configure machine hardware as need be.</p>
+</blockquote>
+<ol type="1">
+<li>the first things the OS thus does is to tell the hardware what code to run when certain exceptional events occur. &gt; For example, what code should run when a hard disk interrupt takes place, when a keyboard interrupt occurs, or when a program makes a system call?</li>
+</ol>
+<p>The OS informs hardware of the locations of these <strong>trap handlers</strong> (is it places, that was mentioned in <strong>system calls in C</strong>, where procedure call put its arguments and system call number in some <em>well-known locations</em>? Is that <strong>trap handlers</strong>? One the hardware is informed it knows what to do when system calls and other exceptional events occurs.</p>
+<ul>
+<li>No, <strong>trap handler</strong> isn’t stack or some specified register. <strong>trap handler</strong> is what check that locations when process execute <strong>trap</strong> instruction.</li>
+</ul>
+<h5 id="really-neat-explanation.">Really neat explanation.</h5>
+<blockquote>
+<p>To specify the exact system call, a system-call number is usually assigned to each system call. The user code is thus responsible for placing the desired system-call number in a register or at a specified location on the stack; the OS, when handling the system call inside the trap handler, examines this number, ensures it is valid, and, if it is, executes the corresponding code. This level of indirection serves as a form of protection; user code cannot specify an exact address to jump to, but rather must request a particular service via number.</p>
+</blockquote>
+<p>Also, one of the features of <strong>trap table</strong> is that OS determine the kit of system calls. So then user-mode processes cannot call restricted operations.</p>
+<h5 id="problem-2-switching-between-processes">6.2 Problem #2: Switching Between Processes</h5>
+<p>Here is the thing: if a process is running on the CPU, this by definition means the OS is <em>not</em> running.</p>
+<h5 id="the-crux-how-to-regain-control-of-the-cpu">THE CRUX: HOW TO REGAIN CONTROL OF THE CPU</h5>
+<h2 id="a-cooperative-approach-wait-for-system-calls">A Cooperative Approach: Wait For System Calls</h2>
+<p>OS <em>trust</em> to processes and regain control by system call from that process. Also there is some another system call in such OS’s - <strong>yield</strong>, which does nothing except to transfer control to the OS so it can run other processes.</p>
+<p>The real problem is, what if process will stack in infinite loop, or/and never makes system calls?</p>
+<blockquote>
+<p>Because restricted operations were did by system calls, such OS has some <strong>protection</strong> in that case, because system call regain control to OS when get called. But such protection don’t solve infinite loop problem</p>
+</blockquote>
+<h2 id="a-non-cooperative-approach-the-os-takes-control">A Non-Cooperative Approach: The OS Takes Control</h2>
+<p>If OS is doing process management by <strong>cooperative approach</strong> and some process enter infinity loop, then only one way could gain control back to OS - <strong>reboot</strong>.</p>
+<h5 id="the-crux-how-to-gain-control-without-cooperation">THE CRUX: HOW TO GAIN CONTROL WITHOUT COOPERATION</h5>
+<p>Or OS could perform <strong>timer interrupt</strong> - raise interrupt every <code>N</code> milliseconds; when the interrupt is raised, the currently runnings process is halted, and preconfigured <strong>interrupts handler</strong> in the OS runs.</p>
+<blockquote>
+<p>At this point, the OS has regained control of the CPU, and thus can do what it pleases: stop the current process, and start a different one</p>
+</blockquote>
+<blockquote>
+<p>the OS must inform the hardware of which code to run when the timer interrupt occurs - thus, at boot time, the OS does exactly that - also OS must start the timer, which is of course privileged operation The timer can also be turned off (also a privileged operation), something we will discuss later when we understand concurrency in more detail.</p>
+</blockquote>
+<p>Also hardware have some responsibility when an interrupt occurs: save enough of the state of the program that was running when interrupt occurred. &gt; This set of actions is quite similar to the behavior of the hardware during an explicit system-call trap into the kernel, with various registers thus getting saved (e.g., onto a kernel stack) and thus easily restored by the return-from-trap instruction.</p>
+<h3 id="saving-and-restoring-context">Saving and Restoring Context</h3>
+<h5 id="context-switch">Context Switch:</h5>
+<ol type="1">
+<li>save a few register values for the current-running process (onto its kernel stack for example) (<strong>Q</strong>: why???)</li>
+<li>restore a few for the soon-to-be-executing process (from its kernel stack)</li>
+</ol>
+<p><strong>A</strong>: well the answer is clear. In Kernel Mode OS works only with kernel stack. OS make decision to pause the process in Kernel Mode thus it works with Kernel Stack.</p>
+<ol type="1">
+<li>Hardware save process state implicitly (in kernel stack) when handle trap instruction.</li>
+<li>If OS decide to pause that process and run another, then it will save previous process kernel stack into memory (process structure) and restore kernel stack of future process from its proc struct.</li>
+<li>Is OS decide to continue that process then restore saved into k-stack regs of that process and move to user mode</li>
+</ol>
+<p><strong>Figure 6.4: The xv6 (AT&amp;T assembly) Context Switch Code</strong></p>
+<h5 id="worried-about-concurrency">6.4 Worried About Concurrency?</h5>
+<h5 id="q">Q:</h5>
+<blockquote>
+<p>“Hmm… what happens when, during a system call, a timer interrupt occurs?” or “What happens when you’re handling one interrupt and an- other one happens? Doesn’t that get hard to handle in the kernel?”</p>
+</blockquote>
+<hr />
+<h5 id="aside-how-long-does-context-switches-take">ASIDE: How Long Does Context Switches Take?</h5>
+<h5 id="section-1">:</h5>
+<ul>
+<li>For example, in 1996 running Linux 1.3.37 on a 200-MHz P6 CPU, system calls took roughly <strong>4 microseconds</strong>, and a context switch roughly <strong>6 microseconds</strong> [MS96].</li>
+</ul>
+<hr />
+<h5 id="tip-reboot-is-useful">TIP: Reboot Is Useful</h5>
+<h5 id="homework-measurment---in-microseconds">Homework (Measurment) - in microseconds:</h5>
+<ol type="1">
+<li><code>open("", O_RDONLY)</code> - 2.105571</li>
+<li><code>open("/", O_RDONLY)</code> - 1.1</li>
+<li><code>sched_yield()</code> - 0.853582</li>
+<li><code>printf("Hello world");</code> - 6.262538</li>
+<li>Nothing - 0.3</li>
+</ol>
+<blockquote>
+<p>The results for all cases except <em>Nothing</em> is recorded without time subtraction that passes between two <code>rdtsc()</code> calls. The results provides as arithmetic average of <strong>1000000</strong> iterations.</p>
+</blockquote>
+<h1 id="scheduling-introduction">Scheduling: Introduction</h1>
+<h5 id="the-crux-how-to-develop-scheduling-policy">THE CRUX: HOW TO DEVELOP SCHEDULING POLICY</h5>
+<blockquote>
+<p>The origins of scheduling, in fact, <strong>predate</strong> computer systems</p>
+</blockquote>
+<h2 id="workload-assumptions">7.1 Workload assumptions</h2>
+<ol type="1">
+<li>Each job runs for the same amount of time.</li>
+<li>All jobs arrive at the same time.</li>
+<li>Once started, each job runs to completion.</li>
+<li>All jobs only use the CPU (i.e., they perform no I/O) 5. The run-time of each job is known.</li>
+</ol>
+<h2 id="scheduling-metrics">7.2 Scheduling metrics</h2>
+<p><code>T</code>turnaround = <code>T</code>completion - <code>T</code>arrival</p>
+<h2 id="fifo">7.3 FIFO</h2>
+<ul>
+<li>clear, simple and easy to implement. Processes are run just in queue</li>
+</ul>
+<p>If we relax first assumption, then FIFO is really bad policy for <code>T</code>-turnaround in case, where first job is larger the others - <strong>convoy effect</strong> (where a number of relatively-short potential consumers of a resource get queued behind a heavyweight resource consumer)</p>
+<h2 id="shortest-job-first-sjf">7.4 Shortest Job First (SJF)</h2>
+<p>This policy is <strong>optimal</strong> for cases, where jobs arrive at the same time and don’t have equal length</p>
+<h5 id="aside-preemptive-schedulers">ASIDE: Preemptive Schedulers:</h5>
+<p>In old days of batch programming, a number of non-<strong>preemptive</strong> schedulers were invented - they just run each process to completion and after it consider to run another job. Virtually all modern schedulers are preemptive and quite willing to stop one process from running in order to run another. Such <strong>preemptive</strong> characteristic is a merit of <strong>context-switch</strong>.</p>
+<p>Resolve second assumption - now jobs can arrive not at the same time.</p>
+<p>Because we don’t relax our third assumption (that jobs runt to completion), SJF cannot perform <strong>context-switch</strong> and this is not optimal policy in cases, when biggest job arrives at 0, and some number of small jobs arrives after it.</p>
+<h2 id="shortest-time-to-completion-first-stcf">7.5 Shortest Time-to-Completion First (STCF)</h2>
+<h6 id="q-think-about-sjf-and-relaxed-third-assumption">Q: think about SJF and relaxed third assumption</h6>
+<ol type="1">
+<li>Some big job arrive - run it because there is no others</li>
+<li>In big process duration comes two small processes - pause big job (at timer interrupt) and perform context switch to run that two small jobs in queue</li>
+<li>Timer interrupt - continue with big job</li>
+</ol>
+<h2 id="a-new-metric-response-time">7.6 A New Metric: Response Time</h2>
+<p><code>T</code>response = <code>T</code>firstrun - <code>T</code>arrival</p>
+<p>In case of this metrics, all mentioned above policies aren’t optimal.</p>
+<h2 id="round-robin">7.7 Round Robin</h2>
+<p>: instead of running jobs to completion, RR runs a job for a <strong>time slice</strong> (sometimes <em>scheduling quantum</em>) and then switches to the next job in the run queue. It repeatedly does so until the jobs are finished. (RR - sometimes <em>time-slicing</em>).</p>
+<h5 id="note-the-length-of-time-slice-must-be-n-timer-interrupt-period-n-is-integer-0---think-about-it-rr-cannot-perform-context-switch-yet-time-slice-pass">NOTE: the length of time slice must be N * timer-interrupt period (N is Integer &gt; 0) - think about it (RR cannot perform context-switch yet time-slice pass)</h5>
+<p>This policy is great for <code>T</code>response but even worth for <code>T</code>turnaround (<code>T</code>firstrun is best, <code>T</code>completion is worst).</p>
+<p>The length of <strong>time-slice</strong> is critical for RR policy. <code>time-slice</code>.length ∝ (proportional) <code>T</code>response. Making time slice too short also isn’t good. Suddenly cost of context switch will <strong>dominate</strong> overall performance.</p>
+<blockquote>
+<p>Thus, deciding on the length of the time slice presents a trade-off to a system de- signer, making it long enough to <strong>amortize</strong> the cost of switching without making it so long that the system is no longer responsive</p>
+</blockquote>
+<h5 id="tip-amortization-can-reduce-costs">TIP: Amortization Can Reduce Costs</h5>
+<p>Time slice is 10 ms and the context-switch is 1 ms, roughly 10% of time is spent context switching and thus wasted. Setting time slice to 100 ms will reduce cost of context switch to 1%.</p>
+<p>Cost os context switch isn’ just OS actions of saving and restoring a few registers. The hardware also increase cost here. When context switch the <strong>CPU</strong> must change the states of: cache, TLBs, branch predictions, and other on-chip hardware.</p>
+<blockquote>
+<p>Switching to another job causes this state to be flushed and new state relevant to the currently-running job to be brought in, which may exact a noticeable performance cost</p>
+</blockquote>
+<p>About worst <code>T</code>completion: &gt; More generally, any policy (such as RR) that is fair, i.e., that evenly divides the CPU among active processes on a small time scale, will perform poorly on metrics such as turnaround time.</p>
+<h2 id="incorporating-io">Incorporating I/O</h2>
+<p>Relax assumption 4 (program can make I/O requests)</p>
+<p>While process perform waiting for I/O response, it isn’t use <strong>CPU</strong>, so for better performance - run another process, overlap waiting process!</p>
+<h2 id="no-more-oracle">7.9 No More Oracle</h2>
+<p>The last assumption is that OS knows the length of process - relax it. In real world the OS knows very little about process length. So how then we can build an approach the behaves like SJF/SCTF without such <em>priori</em> knowledge. Further, how can we incorporate some of the ideas we have seen with the RR scheduler so that response time is also quite good?</p>
+<h2 id="summary">7.10 Summary</h2>
+<p>A scheduler that uses past to predict the future - <strong>multi-level feedback queue</strong>.</p>
+<h2 id="homework-in-my-note">Homework in my note</h2>
+<h1 id="scheduling-the-multi-level-feedback-queue">Scheduling: The Multi-Level Feedback Queue</h1>
+<p><strong>MLFQ</strong> tries to address two-fold: 1. <em>turnaround time</em> optimization 2. minimize <em>response time</em> for better user-interaction</p>
+<blockquote>
+<p>RR is best for r.t. but terrible for t.t.</p>
+</blockquote>
+<h6 id="the-crux-how-to-schedule-without-perfect-knowledge">THE CRUX: HOW TO SCHEDULE WITHOUT PERFECT KNOWLEDGE?</h6>
+<h6 id="tip-learn-from-history">TIP: LEARN FROM HISTORY</h6>
+<p>The <strong>MLFQ</strong> - the queue that learns from past to predict the future.</p>
+<h2 id="mlfq-basic-rules">8.1 MLFQ: Basic Rules</h2>
+<p>: + has a number of distinct <strong>queues</strong> + each queue is assigned to a different <strong>priority level</strong></p>
+<p>MLFQ decide which job should run at a given time: <strong><em>a job with higher priority is chosen to run</em></strong></p>
+<p>Of course, more then one job may be on a given queue, and thus have the <em>same</em> priority: <strong><em>in this case, we will just with RR scheduling among those jobs</em></strong></p>
+<p>Thus, the key to MLFQ scheduling is about: <strong><em>deciding the priority of a job</em></strong></p>
+<p>Also MLFQ <em>varies</em> the priority of a job based on its <em>observed behavior</em></p>
+<h3 id="the-first-two-basic-rules-of-mlfq">The first two basic rules of MLFQ:</h3>
+<ol type="1">
+<li><strong>Rule 1</strong>: If Priority(A) &gt; Priority(B) then A run (B doesn’t)</li>
+<li><strong>Rule 2</strong>: If Priority(A) = Priority(B) then A&amp;B run in RR</li>
+</ol>
+<p>[Hight Priority] Q8: -&gt; (A) -&gt; (B) … Q4: -&gt; (C) … [Low Priority] Q1: -&gt; (D)</p>
+<p>: + A and B runs in RR + What about C and D? Seems like that they execution status is in trouble</p>
+<p><strong><em>So we need to understand how job priority changes over time</em></strong></p>
+<h2 id="attempt1-how-to-change-priority">8.2 Attempt#1: How To Change Priority</h2>
+<h5 id="first-attempt-at-a-priority--adjustment-algorithm">First attempt at a priority- adjustment algorithm:</h5>
+<ol start="3" type="1">
+<li><strong>Rule 3</strong>: When a job enters the system, it is placed at the highest priority (the topmost queue)</li>
+<li>:
+<ul>
+<li><strong>Rule 4a</strong>: If a job uses up an entire time slice while running, its priority is <em>reduced</em> (i.e., it moves down one queue).</li>
+<li><strong>Rule 4b</strong>: If a job gives up the CPU before the time slice is up, it stays at the <em>same</em> priority level.</li>
+</ul></li>
+</ol>
+<blockquote>
+<p>Gives up the CPU before the time slice and keep staying in queue is system call case</p>
+</blockquote>
+<p><strong>Note</strong>: + Rule 4a isn’t fair for jobs, that at some period of time were CPU-costly and in future become <em>low</em> CPU-costly. Because of that they must be elevated in priority + Rule 4b is good for cheater-processes, that artificially satisfy that Rule by making system call each period of time</p>
+<h3 id="example-1-a-single-long-running-job">Example 1: A Single Long-Running Job</h3>
+<h3 id="example-2-along-came-a-short-job">Example 2: Along Came A Short Job</h3>
+<p>(<strong><em>About how MLFQ approximate SJF policy</em></strong>)</p>
+<p>one of the major goal of mlfq algorithm: &gt; because it doesn’t <strong>know</strong> whether a job will be a short job or a long-running job, it first <strong>assumes</strong> it might be a short job, thus giving the job high priority &gt; If it actually is a short job, it will run quickly and complete; &gt; if it is not a short job, it will slowly move down the queues, and thus soon prove itself to be a long-running more batch-like process.</p>
+<ul>
+<li>this is how MLFQ approximates SJF</li>
+</ul>
+<h3 id="example-3-what-about-io">Example 3: What About I/O?</h3>
+<h3 id="problems-with-our-current-mlfq">Problems With Our Current MLFQ</h3>
+<ol type="1">
+<li>What if we got more really big number of quick jobs that runs on the <em>topmost</em> priority? The lower priority processes may never run in this case</li>
+<li>Cheaters, that gives up the CPU specially for satisfying the rule and stay on the topmost queue</li>
+<li>A program can <em>change its behavior</em> over time; what was CPU-bound may transition to a phase of <strong>interactivity</strong>.</li>
+</ol>
+<h2 id="attempt-2-the-priority-boost">8.3 Attempt #2: The Priority Boost</h2>
+<p>We can solve 1 and 3 problem by one shoot: perform the **** of priority for all executing processes - put all on the topmost queue.</p>
+<ol start="5" type="1">
+<li><strong>Rule 5</strong>: After some time period S, move all the jobs in the system to the topmost queue.</li>
+</ol>
+<h5 id="q-what-should-s-be-set-to">Q: what should S be set to?</h5>
+<h5 id="a-john-ousterhout-a-well-regarded-systems-researcher-o11-used-to-call-such-values-in-systems-voo-doo-constants-because-they-seemed-to-require-some-form-of-black-magic-to-set-them-correctly">A: John Ousterhout, a well-regarded systems researcher [O11], used to call such values in systems <em>voo-doo constants</em>, because they seemed to require some form of black magic to set them correctly</h5>
+<blockquote>
+<p>Unfortunately, S has that flavor. If it is set <strong>too high</strong>, long-running jobs could starve; <strong>too low</strong>, and interactive jobs may not get a proper share of the CPU.</p>
+</blockquote>
+<h2 id="attempt-3-better-accounting">Attempt #3: Better Accounting</h2>
+<p>We now have one more problem to solve: how to prevent gaming (<strong>cheaters</strong>) of our scheduler?</p>
+<p>The real <strong>culprit</strong> here, as you might have guessed, are <strong>Rules 4a and 4b</strong></p>
+<ol start="4" type="1">
+<li><strong>Rule 4</strong>: Once a job uses up its time allotment at a given level (regardless of how many times it has given up the CPU), its priority is reduced (i.e., it moves down one queue).</li>
+</ol>
+<h2 id="tuning-mlfq-and-other-issues">8.5 Tuning MLFQ And Other Issues</h2>
+<p><strong><em>Parameterizing</em></strong> ##### Q: number of queues, duration of time slice, value of S - all that need to be set</p>
+<h5 id="a-4">A:</h5>
+<p>There are no easy answer to these questions, and thus only some experience with workloads and subsequent tuning of the scheduler will lead to a satisfactory balance.</p>
+<p>For example, most <strong>MLFQ</strong> variants allow varying time-slice length across different queues: + The <strong>high-priority queues</strong> are usually given short time slices; they are comprised of interactive jobs, after all, and thus quickly alternating between them makes sense (e.g., 10 or fewer millisec- onds) + The low-priority queues, in contrast, contain long-running jobs that are CPU-bound; hence, longer time slices work well (e.g., 100s of ms)</p>
+<h5 id="tip-avoid-voo-doo-constants-ousterhouts-law">TIP: AVOID VOO-DOO CONSTANTS (OUSTERHOUT’S LAW)</h5>
+<p>If you want to customize your OS constant - do it in some file. But for those users, that don’t want to do it - here is the default values. - <strong><em>Ousterhout’s Law</em></strong></p>
+<ul>
+<li><strong>Rule 1</strong>: If Priority(A) &gt; Priority(B), A runs (B doesn’t).</li>
+<li><strong>Rule 2</strong>: If Priority(A) = Priority(B), A &amp; B run in RR.</li>
+<li><strong>Rule 3</strong>: When a job enters the system, it is placed at the highest priority (the topmost queue).</li>
+<li><strong>Rule 4</strong>: Once a job uses up its time allotment at a given level (regardless of how many times it has given up the CPU), its priority is reduced (i.e., it moves down one queue).</li>
+<li><strong>Rule 5</strong>: After some time period S, move all the jobs in the system to the topmost queue.</li>
+</ul>
+<h1 id="scheduling-proportional-share">9 Scheduling: Proportional Share</h1>
+<p>Such scheduling mechanism try to guarantee that each job obtain a certain percentage of CPU time <em>instead</em> of optimizing turnaround or response time.</p>
+<p>One of the excellent <strong>proportional share</strong> scheduler is <strong>LOTTERY SCHEDULER</strong>.</p>
+<h5 id="the-crux-how-to-share-the-cpu-proportionally">THE CRUX: HOW TO SHARE THE CPU PROPORTIONALLY</h5>
+<h2 id="basic-concept-tickets-represent-your-share">9.1 Basic Concept: Tickets Represent Your Share</h2>
+<p><strong>Tickets</strong> are used to some king of represent the share of resources that a process <em>should recieve</em>.</p>
+<p>proc. A got 75 tickets, proc. b got 25. We would expect that A will receive 75% of CPU time and B 25%. - Lottery scheduling achieves this probabilistically (not deterministically) by holding a lottery every so often (every time slice).</p>
+<p>To make that scheduler works it need to know the <em>total amount</em> of tickets. The scheduler picks random number from that range (0..&lt;amount) and pick the winner (if number in 0..&lt;A-ticket-amount then A win and etc).</p>
+<h1 id="tip-use-randomness">TIP: Use Randomness</h1>
+<ol type="1">
+<li>It is robust and simple</li>
+<li>lightweight, there is now any proc. tracking. Only need to know total amount of tickets</li>
+<li>The speed is proportional to speed of random number generating</li>
+</ol>
+<h1 id="tip-use-tickets-to-represent-share">TIP: Use Tickets to Represent Share</h1>
+<p>The <strong>ticket</strong> is used to represent a process’s <em>share of the CPU</em> in these examples.</p>
+<h2 id="ticket-mechanisms">9.2 Ticket Mechanisms</h2>
+<ul>
+<li><p><strong>Ticket currency</strong> - allows a user with a set of ticket to allocate tickets among their own job in whatever currency they would like; the system will automatically convert each currency to one-common (global) currency</p></li>
+<li><p><strong>Ticket transfer</strong> - a process can temporarily hand off its tickets to another process. Very useful in client/server case: client ask the server to do some work on the client’s behalf. To speed up the work, the client transfer all its tickets to the server.</p></li>
+<li><p><strong>Ticket inflation</strong> - a process can temporarily raise or lower the number of tickets it owns. This make little sense in scenario, where processes don’t trust each other, but in another scenario this is vary useful mechanism.</p></li>
+</ul>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1"></a><span class="co">// Consider the total tickets as a number line, the `counter` is current position on that line</span></span>
+<span id="cb8-2"><a href="#cb8-2"></a><span class="dt">int</span> counter = <span class="dv">0</span>;</span>
+<span id="cb8-3"><a href="#cb8-3"></a></span>
+<span id="cb8-4"><a href="#cb8-4"></a><span class="co">// Generate random point on that number line - when we pass or have reached that point then we have reached the winner process.</span></span>
+<span id="cb8-5"><a href="#cb8-5"></a><span class="co">// Each process is something like sector on that number line. The width of that sector is representing by number of tickets of that process</span></span>
+<span id="cb8-6"><a href="#cb8-6"></a><span class="dt">int</span> winner = getrandom(<span class="dv">0</span>, totaltickets);</span>
+<span id="cb8-7"><a href="#cb8-7"></a></span>
+<span id="cb8-8"><a href="#cb8-8"></a><span class="co">// starts from the head</span></span>
+<span id="cb8-9"><a href="#cb8-9"></a>node_t *current = head;</span>
+<span id="cb8-10"><a href="#cb8-10"></a></span>
+<span id="cb8-11"><a href="#cb8-11"></a><span class="co">// in c while will stop when condition will equal 0 (false?)</span></span>
+<span id="cb8-12"><a href="#cb8-12"></a><span class="cf">while</span>(current) {</span>
+<span id="cb8-13"><a href="#cb8-13"></a>    counter += current-&gt;tickets;</span>
+<span id="cb8-14"><a href="#cb8-14"></a></span>
+<span id="cb8-15"><a href="#cb8-15"></a>    <span class="cf">if</span> (counter &gt; winner)</span>
+<span id="cb8-16"><a href="#cb8-16"></a>        <span class="cf">break</span>;</span>
+<span id="cb8-17"><a href="#cb8-17"></a></span>
+<span id="cb8-18"><a href="#cb8-18"></a>    current = current-&gt;next</span>
+<span id="cb8-19"><a href="#cb8-19"></a>}</span></code></pre></div>
+<h2 id="implementation">9.3 Implementation</h2>
+<p>For implementing lottery scheduling you need: + random number generator + data structure to track the process (e.g. linked list) + total number of tickets</p>
+<blockquote>
+<p>Notice that order of nodes (processes) doesn’t affect the correctness of the alrogithm</p>
+</blockquote>
+<h2 id="an-example">9.4 An Example</h2>
+<p>We introduce <code>U</code> - unfairness metric. <code>U = #1JOB-time-completion / #2JOB-time-completion</code></p>
+<p>A perfectly fair scheduler have <code>U ~ 1</code></p>
+<h2 id="how-to-assign-tickets">9.5 How to Assign Tickets?</h2>
+<ul>
+<li>a tough problem of that scheduling mechanism</li>
+<li>“ticket-assignment problem”</li>
+</ul>
+<h2 id="why-not-deterministic">9.6 Why Not Deterministic?</h2>
+<p>The deterministic variant of <strong>lottery scheduler</strong> is <strong>stride scheduler</strong> (a deterministic fair-share scheduler)</p>
+<ul>
+<li>each job in the system has a <strong>stride</strong>. The stride for some proc is <code>= tickets.count / Some large constant</code></li>
+<li>each job in the system has a <strong>pass value</strong> (e.g. all proc in the system starts with 0 pass value)</li>
+<li>every time a process runs, we will increment its <strong>pass value</strong> by its <strong>stride</strong>.</li>
+<li>at any given time, pick the process to run that has the lowest pass value so far; when you run a process, increment its pass counter by its stride.</li>
+</ul>
+<h5 id="pseudo-code">PSEUDO CODE:</h5>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1"></a>current = remove_min(queue); <span class="co">// pick client with minimum pass</span></span>
+<span id="cb9-2"><a href="#cb9-2"></a>schedule(current); <span class="co">//use resource for quantum</span></span>
+<span id="cb9-3"><a href="#cb9-3"></a>current-&gt;pass += current-&gt;stride; <span class="co">// compute next pass using stride</span></span>
+<span id="cb9-4"><a href="#cb9-4"></a>insert(queue, current); <span class="co">// put back into the queue</span></span></code></pre></div>
+<h5 id="q-why-lottery-and-not-stride">Q: Why lottery and not stride?</h5>
+<h5 id="a-5">A:</h5>
+<p>Lottery scheduler has no <strong>global state</strong> &gt; Imagine a new job enters in the middle of our stride scheduling example above; what should its pass value be? Should it be set to 0? &gt; If so, it will monopolize the CPU &gt; In Lottery scheduler we don’t have any global state and adding new proc isn’t a problem</p>
+<h2 id="summary-1">9.7 Summary</h2>
+<h1 id="multiprocessor-scheduling-advanced">10. Multiprocessor Scheduling (Advanced)</h1>
+<h2 id="background-multiprocessor-architecture">10.1 Background: Multiprocessor Architecture</h2>
+<ol type="1">
+<li>Don’t clear understand the concept of caches <strong>locality</strong>. The localities itself is perfeclty clear, but what it is in terms of caches?
+<ul>
+<li>Caches could have one of these localitites?</li>
+<li>Or system can fill the cache based on the decision of necessary locality in current case? Then how it make that decision? By analizing “code”?</li>
+</ul></li>
+</ol>
+<p>Prevoiusly we take a big part of <strong>scheduling</strong>, but there is sceduling in case of single-threaded processes. Now we will discuss scheduling multi-threaded processes in multicore system.</p>
+<ul>
+<li>Previous chapters of scheduling is for single-core systems.</li>
+</ul>
+<p>The main topic of this chapter is <strong>caches</strong> in multi-core systems.</p>
+<h3 id="locality">Locality</h3>
+<p>Caches could be of two <em>locality</em> types: 1. temporal - data placed inside cache and stored here because we consider, that it will be accessed again in the near future. (e.g. variables inside loop or some another repeated operation)</p>
+<ol start="2" type="1">
+<li>spatial - data places inside cache and stored ehre because we consider, that close data will be accessed after that. A data item at address <code>x</code>, is is likely to access data items near <code>x</code> as well. (e.g. iteration through array, instructions executing one after another)</li>
+</ol>
+<h3 id="cache-coherence">Cache coherence</h3>
+<h5 id="q-multi-core-system-with-single-shared-main-memory.">Q: multi-core system with single shared main memory.</h5>
+<p>Consider this situation: 1. CPU1 reads value D from address A 2. CPU1 stash value D to its cache 3. CPU1 modify value D -&gt; updating its cache with that new D’ value</p>
+<blockquote>
+<p>writing the data through all the way to main memory is slow, so the system will (usually) do that later</p>
+</blockquote>
+<ol start="4" type="1">
+<li>OS decide to transfer that process from CPU1 to CPU2</li>
+<li>re-reads the value at address A because there is no such data in CPU2 cache (D’ stored in CPU1 cache and didn’t save in shared main memory). Proc get old D value instead the correct value D’.</li>
+</ol>
+<h5 id="q-1">Q:</h5>
+<ol type="1">
+<li>program interrupted.</li>
+<li>Most recent value D (the result of that program manipulations with that value) stored in cache and don’t been saved in memory.</li>
+<li>why at this moment (context switch) we don’t save that value D to proc structure?</li>
+<li>And then, when OS decide to continue that proc. on different CPU(2) (where cache is empty regarding that process) restore that value D and get exactly this value that we expect</li>
+</ol>
+<ul>
+<li>Also why here isn’t a word about <strong>dirty bit</strong>?</li>
+</ul>
+<h5 id="a-6">A:</h5>
+<p>I consider that this value D isn’t just variable that stored on the stack (and will be saved in proc. struct), and isn’t variable from the heap. So when OS saves <strong>regs and stacks</strong> of that proc. it don’t save cache of that process. Don’t clear understand why, but maybe that really heavy, to save current cache to proc. structure for each process, or decide what part of cache need to be saved also heavy and complex operation.</p>
+<p>The basic solution of that problem is <strong>provided by the hardware</strong>: &gt; by monitoring memory accesses, hardware can ensure that basically the “right thing” hap- pens and that the view of a single shared memory is preserved</p>
+<p>One way to do this is <strong>bus snooping</strong>: + each cache pays attention to memory updates by observing the bus that connects them to main memory + cpu sees the update of data, that stored in its cache -&gt; will notice that -&gt; <strong>invalidate</strong> data in its cache (remove or update it).</p>
+<h2 id="dont-forget-synchronization">10.2 Don’t Forget Synchronization</h2>
+<p>The problem <strong>described above</strong> is about relevance data, that stored in cache of single CPU.</p>
+<h5 id="q-but-what-about-access-to-shared-memory-by-many-cpus">Q: but what about access to shared memory by many CPUs?</h5>
+<p>To guarantee correctness we as a programmers need to use mutual exclusion primitives (such as <strong>locks</strong>).</p>
+<blockquote>
+<p>other approaches, such as building <strong>lock-free</strong> data structures, are complex and only used on occasion; see the chapter on deadlock in the piece on concurrency for details (private contexts in CoreData and etc)</p>
+</blockquote>
+<h3 id="example">Example</h3>
+<ul>
+<li>Single shared queue being accessed on multiple CPUs concurrently</li>
+<li>Without locks, concurrent manipulations with this queue will not work as expected</li>
+</ul>
+<ol type="1">
+<li>Single shared linked list</li>
+<li>Two separate processes which runs parallel on different CPUs</li>
+<li>Each proc get head of that linked list</li>
+<li>Each proc frees that memory, in which head were placed</li>
+<li>Each proc return that value of head</li>
+</ol>
+<p><strong>Summary</strong>: 1. Double free 2. Double return the same value</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> Node_t {</span>
+<span id="cb10-2"><a href="#cb10-2"></a>    <span class="dt">int</span> value;</span>
+<span id="cb10-3"><a href="#cb10-3"></a>    <span class="kw">struct</span> Node_t (pointer)next;</span>
+<span id="cb10-4"><a href="#cb10-4"></a>} Node_t;</span>
+<span id="cb10-5"><a href="#cb10-5"></a></span>
+<span id="cb10-6"><a href="#cb10-6"></a><span class="dt">int</span> List_Pop() {</span>
+<span id="cb10-7"><a href="#cb10-7"></a>    Node_t (pointer)tmp = head;</span>
+<span id="cb10-8"><a href="#cb10-8"></a>    <span class="dt">int</span> value = head-&gt;value;</span>
+<span id="cb10-9"><a href="#cb10-9"></a>    head = head-&gt;next;</span>
+<span id="cb10-10"><a href="#cb10-10"></a>    free(tmp);</span>
+<span id="cb10-11"><a href="#cb10-11"></a>    <span class="cf">return</span> value;</span>
+<span id="cb10-12"><a href="#cb10-12"></a>}</span></code></pre></div>
+<h3 id="solution">Solution</h3>
+<p>make such routines correct via <strong>locking</strong>. In this case allocation simple <strong>mutex</strong> (<code>pthread_mutex_tm</code>) and then adding a <code>lock(&amp;m)</code> at the beginning of the routine and <code>unlock(&amp;m)</code> at the end.</p>
+<blockquote>
+<p>Unfortunately, as we will see, such an approach is not without <strong>problems</strong>, in particular with regards to <strong>performance</strong>. Specifically, as the number of CPUs grows, access to a synchronized shared data structure becomes quite <strong>slow</strong></p>
+</blockquote>
+<h2 id="one-final-issue-cache-affinity-связь-близость-сходство">10.3 One Final Issue: Cache Affinity (связь, близость, сходство)</h2>
+<p>A proc when run on a particular CPU, build up a fair bit of state in caches (and TLBs) of the CPU. The next time the proc runs, it is often advantageous to <strong>run it on the same CPU</strong>, as it will run <strong>faster</strong> if some of its state is <strong>already</strong> present in the caches on that CPU.</p>
+<h2 id="single-queue-scheduling">10.4 Single-Queue Scheduling</h2>
+<p>The most basic approach is to simply <strong>reuse the basic framework</strong> for single processor scheduling, by putting all jobs that need to be scheduled into a single queue. - <strong><em>Single queue multiprocessor scheduling</em></strong> (SQMS).</p>
+<ol type="1">
+<li>Put all jobs on a single queue</li>
+<li>Decide best N jobs (where N is number of cores) based on existing policies</li>
+<li>Pick that N jobs and run on this CPUs</li>
+</ol>
+<h3 id="problems">Problems</h3>
+<ul>
+<li><strong>scalability</strong>: because there is a single queue of processes, locking needs to be performed which is great performance <strong>reducing</strong> &gt; Locks ensure that when SQMS code accesses the single queue (say, to find the next job to run), the proper outcome arises</li>
+</ul>
+<table>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">##### Q:</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">At what moment we locking that queue? When CPU get that process (manipulations with queue), or even when CPU runs that process.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">##### A:</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">I think first, if second then there is no “multicoring”.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>cache affinity</strong>: queue: a -&gt; b -&gt; c -&gt; d -&gt; null</li>
+</ul>
+<p>CPU0: abcd (repeat) CPU1: bcda (repeat) CPU2: cdab (repeat) …</p>
+<p>There is no <strong>cache affinity</strong> because each CPU simply picks the nest job to run from the globally shared queue.</p>
+<p>Solution is include in SQMS some kind of affinity mechanism. Make some balance regarding this:</p>
+<p>CPU0: adaa (repeat) CPU1: bbdb (repeat) CPU2: cccd (repeat)</p>
+<h2 id="multi-queue-scheduling">10.5 Multi-Queue Scheduling</h2>
+<p>Multiple Queues - one per CPU</p>
+<p><strong>multi-queue multiprocessor scheduling</strong> (MQMS)</p>
+<ul>
+<li>Each queue will likely follow a particular scheduling discipline, such as round robin, though of course <strong>any algorithm</strong> can be used.</li>
+<li>Job enters the system -&gt; placed on exactly one scheduling queue (randomly, or picking one with fewer jobs that others)</li>
+<li>Because there is not shared queue, there is no needs to perform locking.</li>
+</ul>
+<p>q1: a -&gt; c q2: b -&gt; d</p>
+<p>CPU0: aaccaaccaacc (repeat) CPU1: bbddbbddbbdd (repeat)</p>
+<h3 id="advantages-against-sqms">Advantages against SQMS:</h3>
+<ul>
+<li>more scalable - no locking (locking queues of execution). Number of CPU grows, but because there is no locking - it isn’t central problem</li>
+<li>intrinsically provides cache affinity - jobs stay on the same CPU.</li>
+</ul>
+<h3 id="problems-1">Problems</h3>
+<ul>
+<li><strong>load imbalance</strong>: c job from q1 get completed: q1: a q2: b -&gt; d</li>
+</ul>
+<p>CPU0: aaaaaaaaaaaa (repeat) CPU1: bbddbbddbbdd (repeat) Which is load imbalance, a process monopolize the CPU</p>
+<p>Also, when a get completed, CPU0 will <strong>just idle</strong></p>
+<h5 id="crux-how-to-deal-with-load-imbalance">CRUX: HOW TO DEAL WITH LOAD IMBALANCE</h5>
+<p>The answer is process <strong>migration</strong>. When CPU0 just idle, scheduler need to migrate b or d processes to that CPU - it is simple</p>
+<p>But what about the case, where a monopolize the CPU? - migration here isn’t so simple at first sight. But what can we do? <strong>Just keep switching jobs between these CPUs</strong></p>
+<p>The trickiest part of it is how should the system decide to enact(утверждать) such a migration?</p>
+<p>One basic approach is <strong>work stealing</strong>: + a source queue (that is low on jobs) will occasionally peek at another (target) queue, to see how full it is + If the target queue is (notably) more full than the source queue, the source will “steal” one or more jobs from the target to help balance load</p>
+<h2 id="linux-multiprocessor-schedulers">10.6 Linux Multiprocessor Schedulers</h2>
+<p>No common solution has approached to build such thing.</p>
+<p>Over time, three different schedulers arose: + the O(1) scheduler, + the Completely Fair Scheduler (CFS), + and the BF Scheduler (BFS) (brain-fuck)</p>
+<p>O(1) and CFC use multiple queues, whereas BFS uses a single queue, showing that both approaches can be useful.</p>
+<p>O(1) is priority based scheduler (similar to MLFQ) CFS is deterministic proportional-share approach (like Stride scheduler) BFS, the only single-queue approach among the three, is also proportional-share, but based on a more complicated scheme known as Earliest Eligible Virtual Deadline First (EEVDF)</p>
+<h1 id="the-abstraction-address-spaces">The Abstraction: Address Spaces</h1>
+<h2 id="early-systems">13.1 Early Systems</h2>
+<p>The OS was <strong>just a library</strong> that sat in memory (e.g. at 0 address) and there would be one running program (a process) that currently sat in physical memory (at 64KB address for example)</p>
+<h2 id="multiprogramming-and-time-sharing">13.2 Multiprogramming and Time Sharing</h2>
+<p>The era of <strong>multiprogramming</strong> was born - the sharing of computer become more common.</p>
+<p>Multiple processes were ready to run in single system. OS provides that by switching between these processes (e.g. when one decides to perform I/O).</p>
+<p>Further more, era of <strong>time-sharing</strong> was born - the notion of interactivity became important</p>
+<blockquote>
+<p>The difference between time-sharing and multiprogramming is in time-sharing systems, context switch performs every time slice while multiprogramming system decide to switch to another job when current job perform I/O (not using the CPU)</p>
+</blockquote>
+<h2 id="the-address-space">13.3 The Address Space</h2>
+<ul>
+<li>is the running program’s view of memory in the system</li>
+</ul>
+<p>The address space of a process <strong>contains all of the memory</strong> state of the running program: + code (the instruction) + stack (keep track where the program is, local variables, parameters, return values) + heap (dynamically-allocated user-managed memory)</p>
+<ol type="1">
+<li>Code is <strong>static</strong> - placed at the 0 address of address space. It won’t need anymore space</li>
+</ol>
+<p>Two regions that may grow: 2. the heap (placed at the top - after code) 3. the stack (placed at the bottom of address space) - they grow in opposite directions</p>
+<blockquote>
+<p>However, <strong>this placement</strong> of stack and heap is just a <strong>convention</strong>; you could arrange the address space in a different way if you’d like (as we’ll see later, when multiple threads co-exist in an address space, no nice way to divide the address space like this works anymore, alas).</p>
+</blockquote>
+<p>!!! The program isn’t in memory at physical address 0 through 16KB - it is illusion.</p>
+<h5 id="the-crux-how-to-virtualize-memory">THE CRUX: HOW TO VIRTUALIZE MEMORY</h5>
+<p>For example, a.s. of proc A is placed in 320 KB address. When proc try to access the memory of <strong>its</strong> address 0, OS, in tandem with some hardware support, will have to make sure the load doesn’t actually go to 0 address (of physical memory) but rather to 320 KB address (where A’s a.s. is placed) - this is key to virtualization of memory.</p>
+<h5 id="tip-the-principle-of-isolation">TIP: The Principle of Isolation</h5>
+<p>is a key principle in building reliable systems. If two entities are isolated, then one of them could fail without implies to another. OS strive to isolate processes from each other and in this way prevent one from harming the other. In terms of OS the key principle is <strong>memory isolation</strong> but some OS’s go further and provide <strong>microkernels</strong> - such thing may provide greater reliability than typical monolithic kernel design.</p>
+<h2 id="goals">13.4 Goals</h2>
+<ol type="1">
+<li>transparency &gt; The OS should implement virtual memory in a way that is invisible to the running program</li>
+</ol>
+<p><strong>program behaves as if it has its own private physical memory</strong></p>
+<ol start="2" type="1">
+<li>efficiency &gt; The OS should strive to make the virtualization as efficient as possible, both in terms of time and space</li>
+</ol>
+<p>hardware support (features such TLBs) will help in this goal</p>
+<ol start="3" type="1">
+<li>protection &gt; The OS should make sure to protect processes from one another as well as the OS itself from processes</li>
+</ol>
+<p><strong>each process should be running in its own isolated cocoon</strong></p>
+<h5 id="aside-every-address-you-see-is-virtual">ASIDE: Every Address You See Is Virtual</h5>
+<div class="sourceCode" id="cb11"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb11-1"><a href="#cb11-1"></a><span class="pp">#include </span><span class="im">&lt;stdio.h&gt;</span></span>
+<span id="cb11-2"><a href="#cb11-2"></a><span class="pp">#include </span><span class="im">&lt;stdlib.h&gt;</span></span>
+<span id="cb11-3"><a href="#cb11-3"></a></span>
+<span id="cb11-4"><a href="#cb11-4"></a><span class="dt">int</span> main(<span class="dt">int</span> argc, <span class="dt">char</span>* argv[]) {</span>
+<span id="cb11-5"><a href="#cb11-5"></a>    printf(<span class="st">&quot;location of code  : %p</span><span class="sc">\n</span><span class="st">&quot;</span>, (<span class="dt">void</span>*) main);</span>
+<span id="cb11-6"><a href="#cb11-6"></a>    printf(<span class="st">&quot;location of heap  : %p</span><span class="sc">\n</span><span class="st">&quot;</span>, (<span class="dt">void</span>*) malloc(<span class="dv">1</span>));</span>
+<span id="cb11-7"><a href="#cb11-7"></a>    <span class="dt">int</span> x = <span class="dv">3</span>;</span>
+<span id="cb11-8"><a href="#cb11-8"></a>    printf(<span class="st">&quot;location of stack : %p</span><span class="sc">\n</span><span class="st">&quot;</span>, (<span class="dt">void</span>*) &amp;x);</span>
+<span id="cb11-9"><a href="#cb11-9"></a>    <span class="cf">return</span> x;</span>
+<span id="cb11-10"><a href="#cb11-10"></a>}</span></code></pre></div>
+<p>The output is:</p>
+<pre><code>location of code  : 0x1095afe50
+location of heap  : 0x1096008c0
+location of stack : 0x7fff691aea64</code></pre>
+<p>Notice, that all these three addresses are virtual!</p>
+<h1 id="interlude-memory-apis">Interlude: Memory APIs</h1>
+<p>Best practice is to come back to that interlude when I will really need it (homework). Right now I don’t really need to know how to debug in <code>gdb</code> or use memory manager (<code>valgrind</code>) to proper C programming.</p>
+<h1 id="mechanism-address-translation">Mechanism: Address Translation</h1>
+<p><strong>Limited direct execution</strong> (or <strong>LDE</strong>): for the most part let the program run directly on the hardware; however at certain key points in time (such as when process issues a system call, or a timer interrupt execution), arrange so that the OS gets involved and makes sure the “right” thing happens.</p>
+<p><strong>Efficiency</strong> is hardware support <strong>Control</strong> is memory isolation</p>
+<h5 id="the-crux-how-to-efficiently-and-flexibly-virtualize-memory">THE CRUX: HOW TO EFFICIENTLY AND FLEXIBLY VIRTUALIZE MEMORY</h5>
+<p>One of generic techniques that OS use is <strong>LDE</strong>, but we add another one - <strong>hardware-based address translation</strong>. + hardware transforms each memory access by changing the <strong>virtual</strong> address provided by the instruction to a <strong>physical</strong> address. + or <em>redirect application memory references to their actual locations in memory</em>.</p>
+<p>But now one hardware will implement memory virtualization. OS will also take part in it, more precisely it will <strong>manage memory</strong>, keeping track of which locations are free and which are in use.</p>
+<h2 id="assumptions">15.1 Assumptions</h2>
+<ul>
+<li>space must be places <em>contiguously</em></li>
+<li>address space is not too big (<em>less than size of physical memory</em>)</li>
+<li>each address space is exactly the <em>same size</em></li>
+</ul>
+<h2 id="an-example-1">15.2 An Example</h2>
+<div class="sourceCode" id="cb13"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb13-1"><a href="#cb13-1"></a><span class="dt">void</span> func() {</span>
+<span id="cb13-2"><a href="#cb13-2"></a>    <span class="dt">int</span> x;</span>
+<span id="cb13-3"><a href="#cb13-3"></a>    x = x + <span class="dv">3</span>; <span class="co">// point of interest</span></span>
+<span id="cb13-4"><a href="#cb13-4"></a>}</span></code></pre></div>
+<p>x86_assembly:</p>
+<pre><code>128: movl 0x0(%ebx), %eax ;load 0+ebx into eax
+132: addl $0x03, %eax     ;add 3 to eax register
+135: movl %eax, 0x0(%ebx) ; store eax back to memory</code></pre>
+<p>from the perspective of the process it looks like this:</p>
+<pre><code>+ Fetch instruction at address 128
++ Execute this instruction (load from address 15 KB) • Fetch instruction at address 132
++ Execute this instruction (no memory reference)
++ Fetch the instruction at address 135
++ Execute this instruction (store to address 15 KB)</code></pre>
+<p>Notice that from the program’s perspective, its address space starts at address 0 and (in our case) grows to maximum 16 KB; all memory references it generates should be within these bounds. However, to virtualize memory, the OS wants to place the process somewhere else in physical memory, not necessarily at address 0.</p>
+<h2 id="dynamic-hardware-based-relocation">15.3 Dynamic (Hardware-based) Relocation</h2>
+<p>ideas: base and bounds, dynamic reallocation</p>
+<p>OS need to registers: base register and bounds (limit) register</p>
+<ol type="1">
+<li>OS decide where in physical memory program should be loaded and sets the <strong>base register</strong> to that value</li>
+<li>Any memory access will be translated by the following: <code>physical address = virtual address + base</code></li>
+</ol>
+<h5 id="aside-software-based-relocation">ASIDE: Software-based relocation</h5>
+<p>Lets dive in what happens when: <code>128: movl 0x0(%ebx), %eax</code></p>
+<p>PC (program counter) is set to 128 Because <code>base</code> is 32 KB, then hardware add 32768 + 128 = 32896 and receive the physical address of that instruction</p>
+<p>Notice, that because this relocation take place at runtime, this calls <strong>dynamic relocation</strong></p>
+<h5 id="tip-hardware-based-dynamic-relocation">TIP: Hardware-based Dynamic Relocation</h5>
+<ul>
+<li><strong>bases</strong> fro transforming virtual addresses</li>
+<li><strong>limit</strong> for ensuring that such address are within the confines of the address space</li>
+</ul>
+<p>Also notice, that first (after translation to p.address) hardware will check that provided address is legal by comparing it (virtual address) with <strong>limit</strong>. If <code>virtual address &gt; limit</code> then CPU will raise an exception.</p>
+<p><strong>limit</strong> register can be defined in two ways: 1. just store the size of address space. OS will check that virtual address is less than bounds and everything is fine 2. store the physical address of the end of address space and thus the hardware first add base to virtual address and then compare that received value is less then bounds - Both methods are logically equivalent</p>
+<h5 id="aside-data-structure---the-free-list">ASIDE: Data Structure - The Free List</h5>
+<p>list of the ranges of the physical memory which are not currently in use</p>
+<h2 id="hardware-support-a-summary">15.3 Hardware Support: A Summary</h2>
+<p>Summarize the support which we need from the hardware + OS runs on <strong>kernel mode</strong> + apps runs on <strong>user mode</strong></p>
+<blockquote>
+<p>A single bit, perhaps stored in some kind of processor status word, indicates which mode the CPU is currently running in</p>
+</blockquote>
+<p>Hardware need to provide <strong>base and bounds registers</strong>. Each CPU have the addition part of registers which are part of <strong>memory management unit</strong> (MMU) of the CPU.</p>
+<p>Hardware bust be able to validate the address</p>
+<p>Hardware should provide the special instructions to modify the base and bounds registers(<strong>privileged operations</strong>), allowing the OS to change them when different processes run.</p>
+<p>CPU must be able to generate <strong>exceptions</strong></p>
+<blockquote>
+<p>There is perfect table of hardware requirements on the book</p>
+</blockquote>
+<h2 id="operating-system-issues">15.5 Operating System issues</h2>
+<p>OS need to perform <strong>memory management</strong>, finding free space and etc.</p>
+<p>OS need to do some work when a process is terminated (exit or killed). Reclaiming all of its memory. Put memory of that terminated process back to free list, clean all its data.</p>
+<p>OS must <em>save</em> and <em>restore</em> the base-and-bounds pair when it perform context switch.</p>
+<p>In addition, when the process is stopped (i.e. not running), it is possible for the OS to move an address space from one location in memory to another rather easily: 1. deschedule the process 2. copies the address space from the current location to new location 3. updates the saved base registers</p>
+<p>OS must provide <strong>exception handler</strong></p>
+<p><strong>TODO</strong>: Dive in in Figure 15.5</p>
+<h2 id="summary-2">Summary</h2>
+<ul>
+<li>internal fragmentation</li>
+<li>segmentation</li>
+</ul>
+<h1 id="segmentation">Segmentation</h1>
+<p>You might noticed the big chunk of “free” space right in the middle, between the stack and the heap</p>
+<p>Base and bounds mechanism isn’t too flexible as we would like because of two things: 1. big chunk of “free” memory in the middle is wasteful 2. because of this it is quite hard to run a program when the entire address space doesn’t fit into memory. We got single and <strong>solid</strong> address space which is unwieldy in some sort of things.</p>
+<h5 id="the-crux-how-to-support-a-large-address-space">THE CRUX: HOW TO SUPPORT A LARGE ADDRESS SPACE</h5>
+<h2 id="segmentation-generalized-basebounds">16.1 Segmentation: Generalized Base/Bounds</h2>
+<p>To solve this problem the idea was born - <strong>segmentation</strong> (very early 1960’s)</p>
+<p>The idea is simple: instead of having one pair of base/bound register per address space, why not have pair of registers for each logic <strong>segment</strong> of the address space (code, stack, heap).</p>
+<p>Segmentations is <strong>allows OS</strong> to place each one of those segments in different places in physical memory (with this mechanism we will not have solid address space from “physical memory point of view” which will add more flexibility).</p>
+<blockquote>
+<p>With a base and bounds pair per segment, we can place each segment <strong>independently</strong> in physical memory</p>
+</blockquote>
+<h5 id="aside-the-segmentation-fault">ASIDE: The Segmentation Fault</h5>
+<p>or violation arises from a memory access on a segmented machine to an <strong>illegal address</strong>. Humorously, the term persists, <em>even on machines with no support for segmentation at all</em>.</p>
+<h5 id="note-also-some-notes-in-notebook.">Note: also some notes in notebook.</h5>
+<h2 id="which-segment-are-we-referring-to">16.2 Which segment are we referring to?</h2>
+<p>Hardware uses segment registers during translation.</p>
+<h5 id="q-how-does-it-know-the-offset-into-a-segment-and-to-which-segment-an-address-refers">Q: How does it know the offset into a segment, and to which segment an address refers?</h5>
+<p>VA: 0b01000001101000 - top two bits are the number of segments (01) - other bits is offset</p>
+<p>For example 00 - code segment, 01 - heap, 10 - stack</p>
+<p>0b01000001101000 (4200) virtual address 1. 01 - heap 2. 12 last bits <code>0b000001101000</code>, or <code>0x068</code> or <code>104</code> is offset</p>
+<ul>
+<li>Hardware takes two top bits to determine the segment</li>
+<li>Get other bits to calculate the offset</li>
+<li>Check that offset is less then limit register</li>
+<li>Add offset to base register and get p.address</li>
+</ul>
+<div class="sourceCode" id="cb16"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb16-1"><a href="#cb16-1"></a><span class="co">// get top 2 bits of 14-bit VA</span></span>
+<span id="cb16-2"><a href="#cb16-2"></a>Segment = (VirtualAddress &amp; SEG_MASK) &gt;&gt; SEG_SHIFT</span>
+<span id="cb16-3"><a href="#cb16-3"></a><span class="co">// now get offset</span></span>
+<span id="cb16-4"><a href="#cb16-4"></a>Offset  = VirtualAddress &amp; OFFSET_MASK</span>
+<span id="cb16-5"><a href="#cb16-5"></a><span class="cf">if</span> (Offset &gt;= Bounds[Segment])</span>
+<span id="cb16-6"><a href="#cb16-6"></a>    RaiseException(PROTECTION_FAULT)</span>
+<span id="cb16-7"><a href="#cb16-7"></a><span class="cf">else</span></span>
+<span id="cb16-8"><a href="#cb16-8"></a>    PhysAddr = Base[Segment] + Offset</span>
+<span id="cb16-9"><a href="#cb16-9"></a>    Register = AccessMemory(PhysAddr)</span>
+<span id="cb16-10"><a href="#cb16-10"></a></span>
+<span id="cb16-11"><a href="#cb16-11"></a><span class="co">// SEG MASK = 0x3000</span></span>
+<span id="cb16-12"><a href="#cb16-12"></a><span class="co">// SEG_SHIFT = 12</span></span>
+<span id="cb16-13"><a href="#cb16-13"></a><span class="co">// OFFSET_MASK = 0xFFF</span></span></code></pre></div>
+<blockquote>
+<p>In some system only one bit of VA is used as segment number - they just concat HEAP and CODE segments into one</p>
+</blockquote>
+<p>This techniques is <strong>implicit approach</strong> (if that tells you something).</p>
+<h2 id="what-about-the-stack">16.3 What about the Stack?</h2>
+<p>Stack <em>grows backward</em>. In physical memory it starts at <code>28KB</code> and grows back to <code>26KB</code> (VA: <code>16KB</code> -&gt; <code>14KB</code>) and translation must be proceed differently.</p>
+<p>Need little hardware support for this: Instead of just base and bounds values, the hardware also needs to know which way the segment grows - 1 bit of information (0 - negative direction, 1 - positive).</p>
+<p>In case of stack we need to subtract offset, but from what, from base value? I think no and this is reasonable, because stack grows in opposite direction, then start of the stack is also in opposite direction = base + limit. <strong><em>Also add note in notebook aboit it</em></strong>.</p>
+<h2 id="support-for-sharing.">16.4 Support for sharing.</h2>
+<blockquote>
+<p>… to save memory sometimes it is useful to <strong>share</strong> certain memory segments between address spaces. In particular, <strong>code sharing</strong> is common and still in use in systems today.</p>
+</blockquote>
+<p>To support this we need little support from the hardware - new <strong>protections bits</strong>. Add a few bits per segment indicating whether or not program can read or write a segment, or perhaps execute code that lies within the segment.</p>
+<h5 id="todo-dont-understand-that-well.-find-additional-info-about-it.">TODO: Dont understand that well. Find additional info about it.</h5>
+<h2 id="fine-grained-vs-coarse-grained-segmentation">16.5 Fine-grained vs Coarse-grained Segmentation</h2>
+<p>Coarse-gained segments are our case: heap, code and stack are relatively bit segments regarding <em>fine-grained</em>.</p>
+<p>Fine-grained segments were in use in early systems, where OS supports thousands of segments per process. For each segment there is a row in <em>segment table</em> which were stored in memory.</p>
+<h2 id="os-support">16.6 OS Support</h2>
+<ol type="1">
+<li><p>What should OS do on a context switch? the segment registers must be saved and restored</p></li>
+<li><p>Managing free space in physical memory. notice that segments might be a different size</p></li>
+</ol>
+<h4 id="external-fragmentation">External fragmentation</h4>
+<blockquote>
+<p>physical memory quickly becomes full of little holes of free space, making it difficult to allocate new segments, or to grow existing ones</p>
+</blockquote>
+<p>One solution of this problem is <strong>compact</strong> physical memory be rearranging the existing segments. OS could: + stop whichever process are running, + copy their data to one contiguous region of memory, + change their segment register values regarding new physical memory</p>
+<p>Simpler approach is to use <strong>free-list</strong> management algorithm that tries to keep <strong>compact</strong> arrangement from the beginning. There are literally hundreds of such approaches which means that <strong>there is no single solution</strong> and external fragmentation is <strong>still exists</strong>.</p>
+<h1 id="free-space-management">Free-Space Management</h1>
+<p>Cases: memory-allocation library (<code>malloc</code>, <code>free</code>); OS itself (managing physical memory). In both cases the problem that exists is called <strong>external fragmentation</strong>: the free space gets chopped into little pieces of different sized and is thus fragmented.</p>
+<p>For example, consider 30 bits of free space. 10 free, 10 used, 10 free. Consider now a request for 15 bits in such space. Such request will <strong>fail</strong> even though there are 20 free bits.</p>
+<h5 id="crux-how-to-manage-free-space">CRUX: HOW TO MANAGE FREE SPACE</h5>
+<h2 id="assumptions-1">17.1 Assumptions</h2>
+<p><code>void* malloc(size_t size)</code> - takes a single parameter which is <em>size</em> of desired memory space</p>
+<p><code>void free(void* ptr)</code> - takes a single parameter which is <em>pointer</em> and frees the corresponding chunk</p>
+<p><strong>NOTICE</strong>: that <code>free</code> doesn’t take size of memory, which is need to be freed. That part of information should be fetched by memory-allocation library - is must figured out how big a chunk of memory is.</p>
+<p>The space, that have been managed by this calls is known historically as the <code>heap</code>. Also there is generic data structure - the <code>free list</code>, which functionality is manage free space in the heap. This <code>free list</code> contains references to all of the free chunks of space in the managed region of memory.</p>
+<p>We talked about <strong>external fragmentation</strong>, but allocators could of course face the problem of <strong>internal fragmentation</strong> (the waste occurs inside the allocated unit) - allocator hand out chunks of memory bigger that that requested.</p>
+<p>Also we assume that once memory is handed out to a client, it cannot be relocated to another location in memory (at current moment memory do without dynamic relocations and any compactions). &gt; For example, if a program calls <code>malloc()</code> and is given a pointer to some space within the heap, that memory region is essentially “owned” by the program (and cannot be moved by the library) until the program returns it via a correspond- ing call to <code>free()</code></p>
+<h5 id="q-sbrk-and-brk-functions.">Q: <code>sbrk</code> and <code>brk</code> functions.</h5>
+<h2 id="low-level-mechanisms">17.2 Low-level Mechanisms</h2>
+<p>Basic techniques in most any allocator: <em>splitting</em> and <em>coalescing</em>.</p>
+<h3 id="splitting-and-coalescing">Splitting and Coalescing</h3>
+<p>10 free, 10 used, 10 free. The <code>free-list</code> of such <code>heap</code> is: <code>head -&gt; #1(addr: 0, len: 10) -&gt; #2(addr: 20, len: 10) -&gt; NULL</code> <code>#1</code> - describe the first 10-byte free segment (bytes 0-9) <code>#2</code> - describe the other free segment (bytes 20-29)</p>
+<p>Again, request for something bigger then 10 bytes will fail because there is no contiguous chunk of memory for this. What about less then 10 bytes?</p>
+<p>Request for single byte of memory: In this case, the allocator will perform an action known as <strong>splitting</strong>. Find a free chunk of memory that can satisfy the request and split it into two. (thought that this split divide not on equal parts). Here allocator finds entry in <code>free-list</code> (10) and divide its space into two parts 9 and 1. Second part (1) returns to the caller, first part (9) still remain on the list.</p>
+<p>Now free list looks like this: <code>head -&gt; #1(addr: 0, len: 10) -&gt; #2(addr: 21, len: 9) -&gt; NULL</code></p>
+<p><strong>coalescing</strong>: What happens when an applications calls <code>free(10)</code>, thus returning the space in the middle of the heap. After this free list might looks like this: <code>head -&gt; #1(addr: 0, len: 10) -&gt; #2(addr: 20, len: 10) -&gt; NULL</code></p>
+<p>Note that right now the entire heap if free, but is divided into 3 chunk of 10 bytes. And again if user request memory chank bigger then 10 bytes - NULL.</p>
+<p>To avoid this problem allocator will use calesce of free space. The idea is simple: &gt; when returning a free chunk in memory, look carefully at the addresses of the chunk you are returning as well as the nearby chunks of free space; if the newlyfreed space sits right next to one (or two, as in this example) existing free chunks, <strong>merge</strong> them into a single larger free chunk.</p>
+<p><code>head -&gt; #1(addr: 0, len: 30) -&gt; NULL</code></p>
+<h3 id="tracking-the-size-of-allocated-regions">Tracking The Size Of Allocated Regions</h3>
+<p>Because <code>free</code> call takes only single argument which is <em>pointer</em> the allocator needs to know the size of memory to which that <em>pointer</em> point. To accomplish this task, most allocators store a little bit of extra information in a <strong>header</strong> block.</p>
+<p>Header: + the size of the allocated region (if <code>malloc(20)</code> then stores 20) + may contains additional pointers (to speed up deallocation) + or magic number (random?) to provide additional integrity checking.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb17-1"><a href="#cb17-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> __header_t {</span>
+<span id="cb17-2"><a href="#cb17-2"></a>    <span class="dt">int</span> size;</span>
+<span id="cb17-3"><a href="#cb17-3"></a>    <span class="dt">int</span> magic;</span>
+<span id="cb17-4"><a href="#cb17-4"></a>} header_t;</span>
+<span id="cb17-5"><a href="#cb17-5"></a></span>
+<span id="cb17-6"><a href="#cb17-6"></a><span class="kw">sizeof</span>(header_t); <span class="co">// 4</span></span>
+<span id="cb17-7"><a href="#cb17-7"></a></span>
+<span id="cb17-8"><a href="#cb17-8"></a><span class="dt">void</span> free(<span class="dt">void</span>(*) ptr) {</span>
+<span id="cb17-9"><a href="#cb17-9"></a>    header_t (*)hptr = (<span class="dt">void</span> (*))ptr - <span class="kw">sizeof</span>(header_t);</span>
+<span id="cb17-10"><a href="#cb17-10"></a>    ...</span>
+<span id="cb17-11"><a href="#cb17-11"></a>    assert(hptr-&gt;magic == <span class="dv">1234567</span>);</span>
+<span id="cb17-12"><a href="#cb17-12"></a>    ...</span>
+<span id="cb17-13"><a href="#cb17-13"></a>}</span></code></pre></div>
+<p><strong>Notice</strong> that when allocator handle request for <code>N</code> bytes it needs to find free chunk, that bigger then <code>N</code> bytes (because of header).</p>
+<h3 id="embedding-a-free-list">Embedding A Free List</h3>
+<p>Building such a list inside the free space itself: + we have 4KiB chunk of memory (i.e. heap) + to manage this as a free list we first have to initialize said list. The list should have one entry of size <code>4KiB - header size</code></p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb18-1"><a href="#cb18-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> __node_t {</span>
+<span id="cb18-2"><a href="#cb18-2"></a>    <span class="dt">int</span> size;</span>
+<span id="cb18-3"><a href="#cb18-3"></a>    <span class="kw">struct</span> __node_t (star)next;</span>
+<span id="cb18-4"><a href="#cb18-4"></a>} node_t;</span></code></pre></div>
+<p><code>mmap</code> - one of system calls to building heap</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb19-1"><a href="#cb19-1"></a>node_t *head = mmap(NULL, <span class="dv">4096</span>, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -<span class="dv">1</span>, <span class="dv">0</span>);</span>
+<span id="cb19-2"><a href="#cb19-2"></a>head-&gt;size = <span class="dv">4096</span> - <span class="kw">sizeof</span>(node_t);</span>
+<span id="cb19-3"><a href="#cb19-3"></a>head-&gt;next = NULL;</span></code></pre></div>
+<p>The main part of this paragraph is illustrated in paper-note, but ideas are simple: 1. find in free list 2. split into two, return pointer to desired memory to user and new <code>head</code> pointer to free list &gt; Notice that pointer to requested memory is pointed to memory itself (below header), but <code>head</code> pointer is pointed to header of memory</p>
+<ol start="3" type="1">
+<li>assumes 8 byte headers</li>
+<li>don’t forget to <em>coalesce</em> the free list to avoid things messing up.</li>
+</ol>
+<h3 id="growing-the-heap">Growing The Heap</h3>
+<p>If heap runs out of space, what should we do? Just return <code>NULL</code>! &gt; Most traditional allocators <strong>start with a small-sized heap</strong> and then request more memory from the OS when they run out</p>
+<h2 id="basic-strategies">17.3 Basic Strategies</h2>
+<ol type="1">
+<li>Best fit - go through free list and find smallest chunk of memory that fits the requested amount</li>
+<li>Worst fit - through free list and find biggest chunk of memory</li>
+<li>First fit - find first block that satisfy desired conditions</li>
+<li>Next fit - keep pointer to locations, that it was looking last. Start from this location for next attempt.</li>
+</ol>
+<h3 id="examples">Examples</h3>
+<p><code>head - 10 -&gt; 30 -&gt; 20 -&gt; null</code></p>
+<p><code>malloc(15)</code> Best fit: search whole list and find smallest entry: <code>head - 10 -&gt; 30 -&gt; 5 -&gt; null</code></p>
+<p>Worst fit: search whole list and find biggest entry: <code>head - 10 -&gt; 15 -&gt; 20 -&gt; null</code></p>
+<p>First fit in this example is behave like worst fit. But there is difference in search coast: worst fit go through whole list, first fit just find first that matches.</p>
+<h2 id="other-approaches">17.4 Other Approaches</h2>
+<ul>
+<li>segregated lists</li>
+<li>slab allocators</li>
+<li>objects caches</li>
+<li>binary buddy allocator</li>
+</ul>
+<h3 id="the-problems-of-segmentation">The problems of segmentation</h3>
+<blockquote>
+<p>external fragmentation - physical memory becomes full of little holes of free space, making it difficult to allocate new segments, or to grow existing ones.</p>
+</blockquote>
+<blockquote>
+<p>internal fragmentation - wasted of space between segments</p>
+</blockquote>
+<p>Let take a look at common use of memory allocator in some program. First we requested some amount of memory (we initialize 3 instances of some class). Now our memory is looks like this: <code>(in use), (in use), (in use), free...</code></p>
+<p>Then we allocate some another classes</p>
+<p><code>(in use) x 10, free...</code></p>
+<p>Then some of instances from this instance queue will freed up, and we got <code>(in use) x 5, free, free, (in use) x3, free...</code></p>
+<p>Just right now we got a mess in free list, but here we go again: <code>(in use) x 2, free, (in use) x2, free, free, (in use) x3, free...</code></p>
+<p>Coalescing is impossible, memory rearrangement is complicated. Request for 3 chunks of memory will make it worse, growing existing instances isn’t too easy.</p>
+<p><strong>Main problems</strong> is external fragmentation and problem of increasing existing used memory.</p>
+<h1 id="paging-introduction">Paging: Introduction</h1>
+<p>Instead of dividing things into <em>variable-sized</em> pieces, as we do with <strong>segmentation</strong>, lets divide them into <em>fixed-sized</em> pieces. In virtual memory we call this idea <strong>paging</strong>.</p>
+<p>Instead of splitting up the address space into segments (code, stack, heap), we divide it into fixed-sized units, each of which we call <strong>page</strong>. Correspondingly, we view physical memory as an array of fixed-sized slots called <strong>page frames</strong>.</p>
+<h5 id="the-crux-how-to-virtualize-memory-with-pages">THE CRUX: HOW TO VIRTUALIZE MEMORY WITH PAGES</h5>
+<h2 id="a-simple-example-and-overview">18.1 A simple example and overview</h2>
+<p>With <strong>paging</strong> a simple 64-byte address space is: + in VM just 4 16-byte pages, which is ordering one by one <code>p0 -&gt; p1 -&gt; p2 -&gt; p3</code> + in PM just 4 16 byte pages, which is scattered across physical memory, which is also N number of pages. <code>p0 (addr 1024) -&gt; p1 (addr 256) -&gt; p2 (addr 128) -&gt; ...</code></p>
+<blockquote>
+<p>we won’t, for example, make assumptions about the direction the heap and stack grow and how they are used</p>
+</blockquote>
+<h5 id="q-and-here-is-the-question.-how-address-space-is-constructed-in-paging">Q: and here is the question. How address space is constructed in paging?</h5>
+<p>The most useful advantage of <strong>paging</strong> is that when OS receive the 64 byte request, it do not need not find solid 64 byte memory block, <strong>it just need to find 4 pages</strong>. For this OS just keeps a <strong>free list</strong> of all free pages for this, and just grabs the first four free pages off of this list.</p>
+<p>To record where each virtual page of AS is placed in physical memory, OS usually keeps <em>per-process</em> data structure known as a <strong>page table</strong>. Here is the data example, that is stored inside that table:</p>
+<pre><code>Virtual page 0 -&gt; Physical Frame 3
+VP1 -&gt; PF7
+VP3 -&gt; PH5
+...</code></pre>
+<pre><code>movl &lt;virtual address&gt; %eax</code></pre>
+<p>To <strong>translate</strong> va to pa, we need to split va into 2 components: + VPN - virtual page number + offset (in this page)</p>
+<p>For our example (size of AS is 64 byte) we need (2^6 = 64) 6 bits for virual address. First two bits (5 and 4 digits) is VPN Last four bits (3, 2, 1 and 0 digits) is offset</p>
+<p>64 byte AS is 4 pages. First two bits is for page number, 2^2 = 4. Perfect! Size of page is 16 bytes, 2^4 = 16. Perfect!</p>
+<p>Now real example: <code>movl 21 %eax</code></p>
+<p>21 = 0b010101 010101: 01 - number of virtual page 0101 - offset VPN = 1 Offset = 5</p>
+<p>Now we know the number of VP and go further: look at page table and find physical fragment of this page. <strong>Find Physical Frame Number (PFN) of this VP</strong>.</p>
+<p><strong>To translate VA in paging to PA we need just change VPN to PFN</strong>.</p>
+<p>PFN in our example for 1 VP is 7.</p>
+<p><code>01</code>0101 -&gt; address translation -&gt; <code>111</code>0101</p>
+<h5 id="q-2">Q:</h5>
+<ol type="1">
+<li>Where are these page tables stored? (In proc structure? I am sure in RAM)</li>
+<li>Typical content of page table and how big they are?</li>
+<li>Does paging make the system too slow? (because page tables are stored in the RAM, except fast base/bound registers pair per segment?)</li>
+</ol>
+<h2 id="where-are-page-tables-stored">18.2 Where are Page Tables Stored?</h2>
+<blockquote>
+<p>For example, imagine a typical <strong>32-bit</strong> address space, with <strong>4KB pages</strong>. This virtual address splits into a <strong>20-bit VPN</strong> and <strong>12-bit offset</strong></p>
+</blockquote>
+<p>Yes! In 32-bit systems, the memory address is 32 bits, 32 digits, 0 or 1. Offset is last bits of address, VPN is first bits of address. 4 KiB = 4096 = 2^12 =&gt; we need 12 bits to represent <strong>any offset</strong>, and remaining 20 bits we could use for VPN, which is mean, that the largest possible address space is consists of 2^20 Virtual Pages, which is 4 KiB of size. In other words biggest AS is 2^20 * 4KiB = 2^20 * 4096 bytes (4 GiB)</p>
+<blockquote>
+<p>Because page tables are so big, we don’t keep any special on-chip hard- ware in the MMU to store the page table of the currently-running process. Instead, we store the page table for each process in <strong>memory</strong> somewhere</p>
+</blockquote>
+<h2 id="whats-actually-in-the-page-table">18.3 What’s actually in the page table?</h2>
+<p>The page table is just a data structure that is used to map VA(more precisely VPN) to PA(to PFN). Thus any data structure can do it.</p>
+<p>The simplest form is just a <strong>linear page table</strong>, which is just an <strong>array</strong>. The OS <em>indexes</em> the array by the virtual page number, and looks up the page-table entry at that index in order to find desired page frame number.</p>
+<h5 id="q-the-most-interesting-question-in-paging-for-me-is-how-as-looks-now-is-it-code-page-heap-page-free-page-free-page-stack-page-like-code-and-heap-at-the-one-end-of-as-and-stack-at-the-other">Q: The most interesting question in paging for me is how AS looks now? Is it <code>code-page, heap-page, free-page, free-page, stack-page</code>? Like code and heap at the one end of AS and stack at the other?</h5>
+<p>About the content of PTE: With PFN we got several bits of useful information: + valid bit - indicates whether the particular translation (i.e. page is valid to access) is valid. When program start it will have code, heap + stack. Unused space in-between is invalid to access (it is pages too). Simple mark all unused pages in AS invalid, the advantage of this is that OS don’t need to allocate physical pages for this invalid virtual pages.</p>
+<ul>
+<li>protection bits - indicates whether the page could be read from, written to, or executed from.</li>
+</ul>
+<p>============================== ##### Q: If we will try to access the invalid page, then we will generate a trap into OS. But can we go more in more details here? ##### A: We try to access the illegal address and hardware raise an exception for this. How I image this happens: illegal memory access, hardware in user mode put something in place for exceptions (code of exception?) and generates the trap instruction. Then OS in kernel mode read the exception place and decide what to do. ==============================</p>
+<ul>
+<li><p>present bit - indicated whether this page is on physical memory or on disk &gt; We will understand this machinery further when we study how to swap parts of the address space to disk to support address spaces that are larger than physical memory</p></li>
+<li><p>dirt bit - indicates whether the page is being modified since it was brought into memory</p></li>
+<li><p>reference bit - to track whether the page has been accessed, and is useful in determining which pages are popular and thus should be kept in memory.</p></li>
+</ul>
+<h2 id="paging-also-too-slow">18.4 Paging: Also Too Slow</h2>
+<pre><code>// Extract the VPN from the virtual address
+VPN = (VirtualAddress &amp; VPN_MASK) &gt;&gt; SHIFT
+
+// Form the address of the page-table entry (PTE)
+PTEAddr = PTBR + (VPN * sizeof(PTE))
+
+// Fetch the PTE
+PTE = AccessMemory(PTEAddr)
+
+// Check if process can access the page
+if (PTE.Valid == False)
+    RaiseException(SEGMENTATION_FAULT)
+else if (CanAccess(PTE.ProtectBits) == False)
+    RaiseException(PROTECTION_FAULT)
+else
+    // Access is OK: form physical address and fetch it
+    offset = VirtualAddress &amp; OFFSET_MASK
+    PhysAddr = (PTE.PFN &lt;&lt; PFN_SHIFT) | offset
+    Register = AccessMemory(PhysAddr)</code></pre>
+<p><code>VPN_MASK = 110000</code> <code>SHIFT = 4</code> <code>PTBR</code> - is page-table base register. It is our assumptions for now.</p>
+<p>Author said that there is two bit problems with such performance.</p>
+<h2 id="a-memory-trace">18.2 A Memory Trace</h2>
+<p>Lets look at memory track of this code segment:</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb23-1"><a href="#cb23-1"></a><span class="dt">int</span> array[<span class="dv">1000</span>];</span>
+<span id="cb23-2"><a href="#cb23-2"></a>...</span>
+<span id="cb23-3"><a href="#cb23-3"></a><span class="cf">for</span> (i = <span class="dv">0</span>; i &lt; <span class="dv">1000</span>; i++) {</span>
+<span id="cb23-4"><a href="#cb23-4"></a>    array[i] = <span class="dv">0</span>;</span>
+<span id="cb23-5"><a href="#cb23-5"></a>}</span></code></pre></div>
+<p>Here is piece of code in assembly:</p>
+<pre><code>0x1024 movl $0x0,(%edi,%eax,4)
+0x1028 incl %eax
+0x102c cmpl $0x03e8,%eax
+0x1030 jne  0x1024</code></pre>
+<ol type="1">
+<li>moves values of zero (<code>$0x0</code>) into the virtual memory address of the location of the array; this address is computed by taking the contents of <code>%edi</code> and adding <code>%eax</code> multiplied by four to it. (4 because sizeof int = 4). <code>%edi</code> holds the base address of array, whereas <code>%eax</code> holds the array index (i)</li>
+<li>increments index of array</li>
+<li>compares that index with <code>0x03e8</code> which is <code>1000</code> in decimal</li>
+<li>if the comparsion shows that values aren’t equal, then go back to instruction at <code>0x1024</code></li>
+</ol>
+<p>I explain memory trace <strong>in details in my note</strong>. Please look at this.</p>
+<h2 id="summary-3">Summary</h2>
+<ul>
+<li>Not leading to external fragmentation</li>
+<li>quite flexible</li>
+</ul>
+<blockquote>
+<p>However, implementing paging support without care <strong>will lead to a slower machine</strong> (with many extra memory accesses to access the page table) as well as memory waste (with memory filled with page tables in- stead of useful application data).</p>
+</blockquote>
+</body>
+</html>

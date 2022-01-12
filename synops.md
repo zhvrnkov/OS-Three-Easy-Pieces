@@ -56,6 +56,36 @@ $ ./program A & ; ./program B & ; ./program C & ; ./program D &
 
 > Don’t forget that each instruc- tion of the program is in memory too; thus memory is accessed on each instruction fetch.
 
+```c
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "common.h"
+int main(int argc, char *argv[])
+{
+  int *p = malloc(sizeof(int));
+  assert(p != NULL);
+  printf("(%d) memory address of p: %08x\n",
+          getpid(), (unsigned) p); // a2
+  *p=0; 
+  while (1) {
+    Spin(1);
+    *p = *p + 1;
+    printf("(%d) p: %d\n", getpid(), *p); // a4
+  }
+  return 0; 
+}
+
+/** OUTPUT
+(2134) memory address of p: 00200000
+(2134) p: 1
+(2134) p: 2
+(2134) p: 3
+(2134) p: 4
+(2134) p: 5
+**/
+```
+
 **code in CodeSnippets**:
 1. with multiple running instances of a programm we get the same output for each.
 2. The prints one address of memory, prints same value for it
@@ -63,9 +93,60 @@ $ ./program A & ; ./program B & ; ./program C & ; ./program D &
 
 # 2.3 Concurrency
 
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include "common.h"
+volatile int counter = 0;
+int loops;
+
+void *worker(void *arg) {
+    int i;
+    for (i = 0; i < loops; i++) {
+        counter++;
+    }
+    return NULL;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        fprintf(stderr, "usage: threads <value>\n");
+        exit(1);
+    }
+    loops = atoi(argv[1]);
+    pthread_t p1, p2;
+    printf("Initial value : %d\n", counter);
+    
+    Pthread_create(&p1, NULL, worker, NULL);
+    Pthread_create(&p2, NULL, worker, NULL);
+    Pthread_join(p1, NULL);
+    Pthread_join(p2, NULL);
+    printf("Final value : %d\n", counter);
+    return 0;
+}
+
+// OUTPUTS:
+/**
+ prompt> gcc -o thread thread.c -Wall -pthread
+ prompt> ./thread 1000
+ Initial value : 0
+ Final value   : 2000
+ **/
+/**
+ prompt> ./thread 100000
+ Initial value : 0
+ Final value   : 143012
+ prompt> ./thread 100000
+ Initial value : 0
+ Final value   : 137298
+ // huh??
+ // what the??
+ **/
+```
+
 ##### Note: look at previous example: we got 2 processes, for each process OS provide virtaul address space - each process have it. Consider now that thread is some kind of process inside "parent" process - the confuse is that thread don't have v.a.s., they use parent's v.a.s. This is what makes **concurrent** operations complicated.
 
-> We use this concep- tual term to refer to a host of problems that arise, and must be addressed, when working on many things at once (i.e., concurrently) in the same program.
+> We use this conceptual term to refer to a host of problems that arise, and must be addressed, when working on many things at once (i.e., concurrently) in the same program.
 
 # The Crux: HOW TO BUILD CORRECT CONCURRENT PROGRAMS.
 
@@ -73,19 +154,39 @@ $ ./program A & ; ./program B & ; ./program C & ; ./program D &
 1. fetch data from RAM into register
 2. increment it
 3. load data back
+Thus consider the case, where p1 (worker 1) is currently on first instruction (fetch) and p2 is on second instruction (increment):
+1. p1 get 2 | p2 got 2 and increment it by 3
+2. p1 increment 2 | p2 put 3 back
+3. p1 but 3 back
+Two increments = single increment, which isn't expected behavior. Should use some synchronization mechanism to prevent this.
 
 # 2.4 Persistence
 + DRAM - stores memory in a volatile manner (power off -> memory lost)
 + need persistent storage: some hardware which will conform this.
 + such hardware comes in the form of I/O device: **hard drive**, although **solid-state drive**.
-+ software that manage disk is called **file system**.
++ software that manages storage device (drive) is called **file system**.
 
-> Unlike the abstractions provided by the OS for the CPU and memory, the OS does not create a private, virtualized disk for each application.
+> Unlike the abstractions provided by the OS for the CPU and memory, **the OS does not create a private, virtualized disk for each application**
 
 # The Crux: HOW TO STORE DATA PERSISTENTLY.
+```c
+#include <stdio.h>
+#include <unistd.h>
+#include <assert.h>
+#include <fcntl.h>
+#include <sys/types.h>
 
+int main(int argc, char *argv[]) {
+    int fd = open("/tmp/file", O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+    assert(fd > -1);
+    int rc = write(fd, "hello world\n", 13);
+    assert(rc == 13);
+    close(fd);
+    return 0;
+}
+```
 **code in CodeSnippets**:
-+ `open()`, `close()` and `write()` - is **system calls** (this s.calls are routed to the part of the OS called **file system** which then handles the requests and returns some kind of error code to the user - this is how system calls works: programm call it, pass control to OS, OS handles the request, return the output and control to program).
++ `open()`, `close()` and `write()` - is **system calls** (this s.calls are routed to the part of the OS called **file system** which then handles the requests and returns some kind of error code or the desired output to caller - this is how system calls works: programm call it, pass control to OS, OS handles the request, return the output and control to program).
 
 # 2.6 Some History
 
@@ -95,16 +196,19 @@ $ ./program A & ; ./program B & ; ./program C & ; ./program D &
 
 ### Protection: System Calls
 
-+ code which run on behalf of the OS was special; it had control of devices and thus should be treated dif- ferently than normal application code
++ code which run on behalf of the OS was special; it had control of devices and thus should be treated differently then normal application code
 
 + imagine if any code could have such permisions. The notion of privacy goes out the window, as any program could read any file.
 + Thus implementing the **file system**, but as a library it make a little sense.
 
 + To improve this **system calls** were invented and firstly come with *Atlas computing system*:
-	+ Instead of providing OS routines as a library (where you just make **procedure calls** to access them), the idea here was to add a special pair of hardware instructions and hardware state to make the transition into the OS a more formal, controlled process.
++ Instead of providing OS routines as a library (where you just make **procedure calls** to access them), the idea here was to add a special pair of hardware instructions and hardware state to make the transition into the OS a more formal, controlled process.
+
+> procedure call - just call
+> system call - tell OS to call it *safe* and give output back
 
 ##### System call vs. Procedure call:
-System call transfers control (i.e. jumps) into the OS while simultaneously raising the **hardware privilege level**. User applications run in **user mode** which means the hardware restricts what ap- plications can do.
+System call transfers control (i.e. jumps) into the OS while simultaneously raising the **hardware privilege level**. User applications run in **user mode** which means the hardware restricts what applications can do.
 
 > for example, an application running in user mode can’t typically initiate an I/O request to the disk, access any physical memory page, or send a packet on the network
 
@@ -124,15 +228,15 @@ System call transfers control (i.e. jumps) into the OS while simultaneously rais
 
 # VIRTUALIZATION
 
-## The Abstraction: The Process
+### The Abstraction: The Process
 process is a **running program**
 
-# The Crux: HOW TO PROVIDE THE ILLUSION OF MANY CPUS?
+##### The Crux: HOW TO PROVIDE THE ILLUSION OF MANY CPUS?
 
 The OS can run hundred of processes with less then 10 CPUs (cores). This is achivied by **CPU virtualization**: running one process, then stopping it and running another, and so forth, the OS can promote the illusion that many virtual CPUs exist when in fact there is only one physical CPU (or a few).
 This basic technique is know as **time sharing** of the CPU, allows users to run as many concurrent processes as they would like; the potential cost is performance, as each will run more slowly if the CPU(s) must be shared.
 
-To implement it (v. of CPU) the OS will need bot some low-level machinery as well as some hight-level intelligence:
+To implement it (v. of CPU) the OS will need both: some low-level machinery as well as some hight-level intelligence:
 1. **Machinery** - low-level mechanisms; **Mechanisms** - are low-level methods or protocols that implement a needed piece of functionality.
 2. **Polices** - algorithms for making some kind of decision within the OS.
 
@@ -155,7 +259,9 @@ Mechanism is about *how*: how does an operating system perform a context switch?
 Policy is about *which*: which process should the operating system run right now?
 
 ##### Stack Pointer and Frame Pointer
-Frame pointer - the value of Stack Pointer before function call. A frame pointer of a given invocation of a function is a copy of the stack pointer as it was before the function was invoked.
+Frame pointer - the value of Stack Pointer before function call. A frame pointer of a given invocation of a function is a copy of the stack pointer as it was before the function was invoked. Frame pointer is very usefule when size of stack frame is vary. In this case popping up the top most stack frame isn't just decrementing stack pointer (if size is vary, then decrementing by what?). For this frame pointer is used and it is top address of previous stack frame.
+
+> return address, that parent subrouting pushing onto child subrouting stack frame is for "saving parent subrouting progress". In other words the return address is address of instruction in what we leave parent subroutine execution, and start child subroutine exections. Notice that we realy need this, because PC stores current instruction (which in this case is instruction from child sub.) and when we finish execution os child sub. where do we go? To the return address of course!
 
 # 4.2 Process API
 + Create: some method to create a new process. Typing command to shell, double-click app icon is invoke OS to create a new process for that program.
@@ -170,15 +276,15 @@ Frame pointer - the value of Stack Pointer before function call. A frame pointer
 ##### A:
 1. to run program, OS need to load its code and any static data (e.g. initialized variables) into memory (address space of a process).
 
-> Programs initially reside on disk in some kind of executable format; thus, the process of loading a program and static data into memory re- quires the OS to read those bytes from disk and place them in memory somewhere
+> Programs initially reside on disk in some kind of executable format; thus, the process of loading a program and static data into memory requires the OS to read those bytes from disk and place them in memory somewhere
 
-> In early (or simple) operating systems, the loading process is done ea- gerly, i.e., all at once before running the program; modern OSes perform the process lazily, i.e., by loading pieces of code or data only as they are needed during program execution
+> In early (or simple) operating systems, the loading process is done eagerly, i.e., all at once before running the program; modern OSes perform the process lazily, i.e., by loading pieces of code or data only as they are needed during program execution
 
 2. allocate memory for **run-time** stack
 
 > As you should likely already know, C programs use the stack for local variables, function parameters, and return addresses
 
-> The OS will also likely initial- ize the stack with arguments; specifically, it will fill in the parameters to the main() function, i.e., argc and the argv array
+> The OS will also likely initialze the stack with arguments; specifically, it will fill in the parameters to the main() function, i.e., argc and the argv array
 
 3. allocate some memory for **heap**.
 
@@ -190,7 +296,9 @@ Frame pointer - the value of Stack Pointer before function call. A frame pointer
 
 5. finally, set the stage of program execution
 
-> In C this is jumping to `main` routine and and transfers control to the **CPU**
+> In C this is jumping to `main` routine and transfers control to the **CPU**
+
+Thus we have compilation stage which create code and static data segment and put it into disc as file. When OS prepare this program to run it fetch it from the disk, allocates memory for that program and put everything into this memory
 
 # 4.4 Process State
 
@@ -210,10 +318,41 @@ Once a process come **blocked**, OS will keep it as such until some events occur
 # 4.5 Data Structures
 OS is programm and also have some key data structures that track various relevant peices of information (e.g. **process list** for all processes that are ready as well as some additional inforamtion about running processes; also OS needs to track blocked processes in some way because OS will do something with blocked process **when some events occur** (I/O event complete)).
 
-**TODO**: make code snippet for this
 **code for xv6 Proc Structure**
+```c
+// the registers xb6 will save and restore
+// to stop and subsequently restart a process
+struct context {
+  int eip;
+  int esp;
+  int ebx;
+  int ecx;
+  int edx;
+  int esi;
+  int edi;
+  int ebp;
+};
 
-> Also, a process could be placed in a final state where it has exited but has not yet been cleaned up (in UNIX-based systems, this is called the zombie state1). This final state can be useful as it allows other processes (usually the parent that created the process) to examine the return code of the process and see if the just-finished process executed successfully (usually, programs return zero in UNIX-based systems when they have accomplished a task successfully, and non-zero otherwise).
+enum proc_state { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+
+struct proc {
+  char *mem;                  // Start of process memory
+  uint sz;                    // Size of process memory
+  char *kstack;               // Bottom of kernel stack for this process
+  enum proc_state state;      // Process state
+  int pid;                    // Process ID
+  struct proc *parent;        // Parent Process
+  void *chan;                 // If non-zero, sleeping on chan
+  int killed;                 // If non-zero, have been killed
+  struct file *ofile[NOFILE]; // Open files
+  struct inode *cwd;          // Current directory
+  struct context context;     // Switch here to run process
+  struct trapframe *tf;       // Trap frame for the
+                              // current interrupt
+};
+```
+
+> Also, a process could be placed in a final state where it has exited but has not yet been cleaned up (in UNIX-based systems, this is called the zombie state). This final state can be useful as it allows other processes (usually the parent that created the process) to examine the return code of the process and see if the just-finished process executed successfully (usually, programs return zero in UNIX-based systems when they have accomplished a task successfully, and non-zero otherwise).
 
 ##### Q: after this quote i wonder about returns. How they actually works?
 + Running c program in shell. `return 0;` from `main`. After completion we got something "Program ended with exit code: 0". At current moment i suppose that parant process of any C program which was called in terminal is shell. Here is the question: how shell get that return code? Profram runs, return 0 and shell somehow handle it like callback? Or program run, return 0 and being setted to final (zombie) state, after some amount of time (small amount) the parent process somehow examinate that return code of the child process and manipulate with that (in case of shell it will just print it). Based on how i understand that text snippet from book the last way is the right way.
@@ -246,7 +385,31 @@ Interesing task about process tracing between states.
 2. the body (or code if you like) starts after call `fork()` in "parent-code" (if that will be before `fork()` call, then we will got recursivly creation of new processes).
 3. Also, by this reason, `rc == 0` in children process because `int rc = fork()` didn't get called.
 
-> play with it code. Remove `wait(NULL` but notice, that without `wait` call that code isn't derministic (parent is gone, but child is going).
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main(int arcgc, char *argv[]) {
+
+  printf("Hello world (pid:%d)\n", (int) getpid());
+  int rc = fork();
+
+  if (rc < 0) {
+    fprintf(stderr, "fork failed\n");
+    exit(1);
+  } if (rc == 0) {
+    printf("children (pid:%d)\n", (int) getpid());
+  } else {
+    wait(NULL);
+    printf("parent (pid:%d) of (pid:%d)\n", (int) getpid(), rc);
+  }
+
+  return 0;
+}
+```
+
+> play with it code. Remove `wait(NULL)` but notice, that without `wait` call that code isn't deterministic (parent is gone, but child is going).
 
 # 5.2 The `wait()` System Call
 - system call `wait` will not return until all child process has run and exited
@@ -255,6 +418,36 @@ Interesing task about process tracing between states.
 - is useful when you want to run a program that is different from the calling (parent, current) program.
 
 **code snippet p3.c**
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/wait.h>
+
+int main(int argc, char *argv[]) {
+
+  printf("Hello world (pid:%d)\n", (int) getpid());
+  int rc = fork();
+
+  if (rc < 0) {
+    fprintf(stderr, "fork failed\n");
+    exit(1);
+  } if (rc == 0) {
+    printf("children (pid:%d)\n", (int) getpid());
+    char *myargs[3];
+    myargs[0] = "wc"; // in the source code there is strdup call, which is just copy (?) as i know.
+    myargs[1] = "p3.c";
+    myargs[2] = NULL;
+    execvp(myargs[0], myargs); // also don't clear understand this part. If first parameter in execvp is command, which we want to execute and second parameter is arguments for this command, then why we pass full array, instead of `myargs[1]`?
+    printf("This shouldn't print out"); // interesing part. Should explain it in synops. 
+  } else {
+    wait(NULL);
+    printf("parent (pid:%d) of (pid:%d)\n", (int) getpid(), rc);
+  }
+  return 0; 
+}
+```
 - print which will not has been called.
   1. This is because `execvp()` load the exact code (and all neccessary static data) to the place, where it's been called.
   2. The heap and stack and other parts of the memory space of the program re-initialized (because we exactly add CODE dynamically!!! compiler know nothing about it. We add code at runtime)
@@ -1565,4 +1758,93 @@ PFN in our example for 1 VP is 7.
 
 > For example, imagine a typical **32-bit** address space, with **4KB pages**. This virtual address splits into a **20-bit VPN** and **12-bit offset**
 
-Yes! In 32-bit systems, the memory address is 32 bits, 32 digits, 0 or 1. Offset is last bits of address, VPN is first bits of address. 4 KiB = 4096 = 2^12 => we need 12 bits to represent **any offset**, and remaining 20 bits we could use for VPN, which is mean, that the largest possible address space is consists of 2^20 Virtual Pages, which is 4 KiB of size. In other words biggest AS is 2^20 * 4KiB = 2^20 * 4096 bytes
+Yes! In 32-bit systems, the memory address is 32 bits, 32 digits, 0 or 1. Offset is last bits of address, VPN is first bits of address. 4 KiB = 4096 = 2^12 => we need 12 bits to represent **any offset**, and remaining 20 bits we could use for VPN, which is mean, that the largest possible address space is consists of 2^20 Virtual Pages, which is 4 KiB of size. In other words biggest AS is 2^20 * 4KiB = 2^20 * 4096 bytes (4 GiB)
+
+> Because page tables are so big, we don’t keep any special on-chip hard- ware in the MMU to store the page table of the currently-running process. Instead, we store the page table for each process in **memory** somewhere
+
+## 18.3 What's actually in the page table?
+
+The page table is just a data structure that is used to map VA(more precisely VPN) to PA(to PFN). Thus any data structure can do it.
+
+The simplest form is just a **linear page table**, which is just an **array**. The OS *indexes* the array by the virtual page number, and looks up the page-table entry at that index in order to find desired page frame number.
+
+##### Q: The most interesting question in paging for me is how AS looks now? Is it `code-page, heap-page, free-page, free-page, stack-page`? Like code and heap at the one end of AS and stack at the other?
+
+About the content of PTE:
+With PFN we got several bits of useful information:
++ valid bit - indicates whether the particular translation (i.e. page is valid to access) is valid. When program start it will have code, heap + stack. Unused space in-between is invalid to access (it is pages too). Simple mark all unused pages in AS invalid, the advantage of this is that OS don't need to allocate physical pages for this invalid virtual pages.
+
++ protection bits - indicates whether the page could be read from, written to, or executed from.
+
+==============================
+##### Q: If we will try to access the invalid page, then we will generate a trap into OS. But can we go more in more details here?
+##### A:
+We try to access the illegal address and hardware raise an exception for this. How I image this happens: illegal memory access, hardware in user mode put something in place for exceptions (code of exception?) and generates the trap instruction. Then OS in kernel mode read the exception place and decide what to do.
+==============================
+
++ present bit - indicated whether this page is on physical memory or on disk
+> We will understand this machinery further when we study how to swap parts of the address space to disk to support address spaces that are larger than physical memory
+
++ dirt bit - indicates whether the page is being modified since it was brought into memory
+
++ reference bit - to track whether the page has been accessed, and is useful in determining which pages are popular and thus should be kept in memory.
+
+## 18.4 Paging: Also Too Slow
+```
+// Extract the VPN from the virtual address
+VPN = (VirtualAddress & VPN_MASK) >> SHIFT
+
+// Form the address of the page-table entry (PTE)
+PTEAddr = PTBR + (VPN * sizeof(PTE))
+
+// Fetch the PTE
+PTE = AccessMemory(PTEAddr)
+
+// Check if process can access the page
+if (PTE.Valid == False)
+    RaiseException(SEGMENTATION_FAULT)
+else if (CanAccess(PTE.ProtectBits) == False)
+    RaiseException(PROTECTION_FAULT)
+else
+    // Access is OK: form physical address and fetch it
+    offset = VirtualAddress & OFFSET_MASK
+    PhysAddr = (PTE.PFN << PFN_SHIFT) | offset
+    Register = AccessMemory(PhysAddr)
+```
+
+`VPN_MASK = 110000`
+`SHIFT = 4`
+`PTBR` - is page-table base register. It is our assumptions for now.
+
+Author said that there is two bit problems with such performance.
+
+## 18.2 A Memory Trace
+Lets look at memory track of this code segment:
+```c
+int array[1000];
+...
+for (i = 0; i < 1000; i++) {
+    array[i] = 0;
+}
+```
+
+Here is piece of code in assembly:
+```
+0x1024 movl $0x0,(%edi,%eax,4)
+0x1028 incl %eax
+0x102c cmpl $0x03e8,%eax
+0x1030 jne  0x1024
+```
+
+1. moves values of zero (`$0x0`) into the virtual memory address of the location of the array; this address is computed by taking the contents of `%edi` and adding `%eax` multiplied by four to it. (4 because sizeof int = 4). `%edi` holds the base address of array, whereas `%eax` holds the array index (i)
+2. increments index of array
+3. compares that index with `0x03e8` which is `1000` in decimal
+4. if the comparsion shows that values aren't equal, then go back to instruction at `0x1024`
+
+I explain memory trace **in details in my note**. Please look at this.
+
+## Summary
++ Not leading to external fragmentation
++ quite flexible
+
+> However, implementing paging support without care **will lead to a slower machine** (with many extra memory accesses to access the page table) as well as memory waste (with memory filled with page tables in- stead of useful application data).
